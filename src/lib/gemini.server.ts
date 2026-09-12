@@ -36,7 +36,7 @@ export interface GeminiContent {
 }
 
 /**
- * Initiates a streaming request to Google Gemini API (gemini-1.5-flash).
+ * Initiates a streaming request to Google Gemini API (gemini-2.5-flash).
  * The API key is sent strictly server-to-server and is never returned to the client.
  */
 export async function streamGeminiContent(
@@ -48,7 +48,7 @@ export async function streamGeminiContent(
     throw new Error("AI_NOT_CONFIGURED");
   }
 
-  const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:streamGenerateContent?alt=sse&key=${key}`;
+  const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:streamGenerateContent?alt=sse&key=${key}`;
 
   return fetch(endpoint, {
     method: "POST",
