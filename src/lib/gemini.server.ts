@@ -53,8 +53,9 @@ export async function streamGeminiContent(
   return fetch(endpoint, {
     method: "POST",
     headers: {
-      "Content-Type": "application/json"
-    },
+  "Content-Type": "application/json",
+  "x-goog-api-key": key
+},
     body: JSON.stringify({
       contents,
       generationConfig: {
