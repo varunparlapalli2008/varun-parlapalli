@@ -1,0 +1,147 @@
+@import "tailwindcss";
+
+@theme {
+  --color-ivory: #F7F4EE;
+  --color-ivory-light: #FCFAF6;
+  --color-ivory-card: #FFFFFF;
+  --color-burgundy-dark: #20060B;
+  --color-burgundy: #590B20;
+  --color-burgundy-hover: #430717;
+  --color-gold: #AC9062;
+  --color-gold-light: #C5A880;
+  --color-gold-muted: #D4C4A8;
+  --color-gray-warm: #68626B;
+  --color-border-warm: #D9CCB8;
+  --color-border-subtle: #E8DFD1;
+
+  --font-serif-display: var(--font-bodoni), "Bodoni Moda", "Bodoni MT", Didot, "Playfair Display", Georgia, serif;
+  --font-sans: var(--font-inter), Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --font-editorial: var(--font-cormorant), Georgia, "Times New Roman", serif;
+  --font-script: "Brush Script MT", "Snell Roundhand", "Caveat", "Playfair Display", cursive;
+}
+
+:root {
+  --bg-ivory: #F7F4EE;
+  --text-burgundy-dark: #20060B;
+  --accent-burgundy: #590B20;
+  --gold-antique: #AC9062;
+  --gold-border: #D9CCB8;
+  --text-muted: #68626B;
+  --header-height: 4.5rem;
+}
+
+/* Force light warm atelier canvas - strictly light mode */
+html, body {
+  background-color: #F7F4EE;
+  color: #20060B;
+  font-family: var(--font-inter), Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  overflow-x: hidden;
+  scroll-behavior: smooth;
+}
+
+/* Subtle paper grain texture */
+.paper-grain {
+  background-color: #F7F4EE;
+  background-image: radial-gradient(rgba(172, 144, 98, 0.04) 1px, transparent 1px);
+  background-size: 24px 24px;
+}
+
+/* Architectural linework styling */
+.arch-line {
+  stroke: #AC9062;
+  stroke-width: 0.85;
+  fill: none;
+  opacity: 0.38;
+}
+
+/* Serif headings matching reference */
+.font-display {
+  font-family: var(--font-bodoni), "Bodoni Moda", "Bodoni MT", Didot, "Playfair Display", Georgia, serif;
+  font-feature-settings: "pnum" 1, "lnum" 1;
+}
+
+.font-editorial {
+  font-family: var(--font-cormorant), Georgia, "Times New Roman", serif;
+}
+
+.font-script {
+  font-family: 'Playfair Display', Georgia, cursive, italic;
+  font-style: italic;
+}
+
+/* Hairline dividers matching reference */
+.hairline-b {
+  border-bottom: 1px solid #D9CCB8;
+}
+
+.hairline-r {
+  border-right: 1px solid #D9CCB8;
+}
+
+.hairline-t {
+  border-top: 1px solid #D9CCB8;
+}
+
+.hairline-l {
+  border-left: 1px solid #D9CCB8;
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: #F7F4EE;
+}
+::-webkit-scrollbar-thumb {
+  background: #D9CCB8;
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #AC9062;
+}
+
+/* Coordinated opening sequence animations */
+@keyframes heroFadeUp {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes heroRuleExpand {
+  from {
+    width: 0px;
+    opacity: 0;
+  }
+  to {
+    width: 40px;
+    opacity: 1;
+  }
+}
+
+.anim-fade-up {
+  animation: heroFadeUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.anim-rule {
+  animation: heroRuleExpand 0.6s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+/* Respect reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  .anim-fade-up,
+  .anim-rule {
+    animation: none !important;
+    opacity: 1 !important;
+    transform: none !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
