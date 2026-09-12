@@ -48,7 +48,7 @@ export async function streamGeminiContent(
     throw new Error("AI_NOT_CONFIGURED");
   }
 
-  const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:streamGenerateContent?alt=sse&key=${key}`;
+  const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:streamGenerateContent?alt=sse`;
 
   return fetch(endpoint, {
     method: "POST",
