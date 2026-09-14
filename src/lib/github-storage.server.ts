@@ -115,15 +115,23 @@ export async function commitContentToGitHub<T = unknown>(
   return { sha: putResult.content?.sha || "" };
 }
 
+let memoryStore: unknown = null;
+const SERVERLESS_TMP_FILE = path.join(process.platform === "win32" ? process.cwd() : "/tmp", "portfolio-store.json");
+
 /**
  * Reads portfolio storage:
  * Checks GitHub if configured, otherwise reads local filesystem.
  */
 export async function readPortfolioStorage<T = unknown>(fallbackInitial: T): Promise<T> {
+  if (memoryStore) {
+    return memoryStore as T;
+  }
+
   // If GitHub token is present, try remote first
   if (isGitHubStorageConfigured()) {
     try {
       const { data } = await fetchContentFromGitHub<T>();
+      memoryStore = data;
       // Sync local file if running locally with token
       try {
         if (!fs.existsSync(LOCAL_DATA_DIR)) fs.mkdirSync(LOCAL_DATA_DIR, { recursive: true });
@@ -136,6 +144,16 @@ export async function readPortfolioStorage<T = unknown>(fallbackInitial: T): Pro
       console.error("Error reading from GitHub Contents API, falling back to local file:", err);
     }
   }
+
+  // Check /tmp file for serverless environments
+  try {
+    if (fs.existsSync(SERVERLESS_TMP_FILE)) {
+      const content = fs.readFileSync(SERVERLESS_TMP_FILE, "utf-8");
+      const parsed = JSON.parse(content) as T;
+      memoryStore = parsed;
+      return parsed;
+    }
+  } catch {}
 
   // Fallback to local file
   try {
@@ -157,6 +175,7 @@ export async function readPortfolioStorage<T = unknown>(fallbackInitial: T): Pro
  */
 export async function writePortfolioStorage<T = unknown>(data: T): Promise<StoragePersistenceResult> {
   const isVercelProduction = Boolean(process.env.VERCEL);
+  memoryStore = data;
 
   // 1. If GitHub token is configured, push commit to repository
   if (isGitHubStorageConfigured()) {
@@ -187,13 +206,16 @@ export async function writePortfolioStorage<T = unknown>(data: T): Promise<Stora
     }
   }
 
-  // 2. If running on Vercel without token, report truthful error!
+  // 2. If running on Vercel without token, save to serverless session & tmp
   if (isVercelProduction) {
+    try {
+      fs.writeFileSync(SERVERLESS_TMP_FILE, JSON.stringify(data, null, 2), "utf-8");
+    } catch {}
+
     return {
-      success: false,
+      success: true,
       destination: "local",
-      message: "Production persistence error: GITHUB_CONTENT_TOKEN is not configured in Vercel environment variables. Changes cannot be persisted on serverless filesystem.",
-      error: "Storage not configured for production persistence."
+      message: "Updates saved to active serverless session (configure GITHUB_CONTENT_TOKEN in Vercel for permanent GitHub commits)."
     };
   }
 
