@@ -18,6 +18,7 @@ import AchievementsSection from "@/components/sections/AchievementsSection";
 import CurrentlyLearning from "@/components/sections/CurrentlyLearning";
 import ContactSection from "@/components/sections/ContactSection";
 import Footer from "@/components/layout/Footer";
+import CinematicIntro from "@/components/intro/CinematicIntro";
 export default async function HomePage() {
   const profile = await getPublishedProfile();
   const projects = await getPublishedProjects();
@@ -29,6 +30,11 @@ export default async function HomePage() {
 
   return (
     <>
+      <CinematicIntro content={{
+        projects: projects.slice(0, 3).map(({ title, category }) => ({ title, category })),
+        milestones: achievements.slice(0, 2).map(({ title, result, teamOrIndividual }) => ({ title, result, teamOrIndividual })),
+        leadership: experience[0] ? { company: experience[0].company, role: experience[0].role } : undefined,
+      }} />
       {/* Sticky Horizontal Top Header */}
       <TopHeader />
 
@@ -58,7 +64,7 @@ export default async function HomePage() {
         <ContactSection profile={profile} />
 
         {/* Minimal Footer */}
-        <Footer />
+        <Footer showIntroReplay />
       </main>
     </>
   );

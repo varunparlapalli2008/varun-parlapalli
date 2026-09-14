@@ -133,6 +133,12 @@ html, body {
   animation: heroRuleExpand 0.6s cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 
+/* Let the homepage's own text reveal resume when the cinematic intro closes. */
+html[data-portfolio-intro="playing"] #top .anim-fade-up,
+html[data-portfolio-intro="playing"] #top .anim-rule {
+  animation-play-state: paused;
+}
+
 /* Respect reduced motion */
 @media (prefers-reduced-motion: reduce) {
   *,
