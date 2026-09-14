@@ -41,24 +41,67 @@ export function hashPassword(password: string): string {
   return `scrypt:${salt}:${derivedKey}`;
 }
 
+export interface VerifyCredentialsResult {
+  valid: boolean;
+  missingConfig?: boolean;
+  error?: string;
+}
+
 /**
  * Verifies email and password against server environment variables.
+ * Checks ADMIN_PASSWORD first, then ADMIN_PASSWORD_HASH as fallback.
  */
-export function verifyAdminCredentials(emailAttempt: string, passwordAttempt: string): boolean {
+export function verifyAdminCredentials(emailAttempt: string, passwordAttempt: string): VerifyCredentialsResult {
   const adminEmail = process.env.ADMIN_EMAIL?.trim().toLowerCase();
+  const adminPassword = process.env.ADMIN_PASSWORD;
   const adminPasswordHash = process.env.ADMIN_PASSWORD_HASH?.trim();
 
-  if (!adminEmail || !adminPasswordHash) {
-    console.error("Studio Auth Error: ADMIN_EMAIL or ADMIN_PASSWORD_HASH environment variable is not configured.");
-    return false;
+  if (!adminEmail) {
+    console.error("Studio Auth Error: ADMIN_EMAIL environment variable is not configured.");
+    return {
+      valid: false,
+      missingConfig: true,
+      error: "Server configuration error: ADMIN_EMAIL environment variable is not configured."
+    };
+  }
+
+  if (!adminPassword && !adminPasswordHash) {
+    console.error("Studio Auth Error: Neither ADMIN_PASSWORD nor ADMIN_PASSWORD_HASH environment variable is configured.");
+    return {
+      valid: false,
+      missingConfig: true,
+      error: "Server configuration error: ADMIN_PASSWORD environment variable is not configured in Vercel Production Environment Variables."
+    };
   }
 
   const cleanEmail = (emailAttempt || "").trim().toLowerCase();
   if (cleanEmail !== adminEmail) {
-    return false;
+    return {
+      valid: false,
+      error: "Incorrect email or password. Access is restricted to the verified portfolio owner."
+    };
   }
 
-  return verifyPasswordHash(passwordAttempt, adminPasswordHash);
+  // 1. If plain ADMIN_PASSWORD is set, verify with constant-time equality
+  if (adminPassword) {
+    const attemptBuf = Buffer.from(passwordAttempt || "", "utf-8");
+    const targetBuf = Buffer.from(adminPassword, "utf-8");
+    if (attemptBuf.length === targetBuf.length && crypto.timingSafeEqual(attemptBuf, targetBuf)) {
+      return { valid: true };
+    }
+  }
+
+  // 2. If ADMIN_PASSWORD_HASH is set, verify with scrypt hash
+  if (adminPasswordHash) {
+    if (verifyPasswordHash(passwordAttempt, adminPasswordHash)) {
+      return { valid: true };
+    }
+  }
+
+  return {
+    valid: false,
+    error: "Incorrect email or password. Access is restricted to the verified portfolio owner."
+  };
 }
 
 /**

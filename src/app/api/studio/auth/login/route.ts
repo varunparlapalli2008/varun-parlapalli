@@ -17,11 +17,11 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const isValid = verifyAdminCredentials(email, password);
-    if (!isValid) {
+    const authResult = verifyAdminCredentials(email, password);
+    if (!authResult.valid) {
       return NextResponse.json(
-        { error: "Invalid credentials. Access is strictly restricted to the verified portfolio owner." },
-        { status: 401 }
+        { error: authResult.error || "Incorrect email or password." },
+        { status: authResult.missingConfig ? 500 : 401 }
       );
     }
 
