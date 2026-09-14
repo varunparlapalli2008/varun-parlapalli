@@ -3,9 +3,11 @@ import { NextRequest } from "next/server";
 
 export const STUDIO_COOKIE_NAME = "pv_studio_session";
 const SESSION_MAX_AGE_SECONDS = 7 * 24 * 60 * 60; // 7 days
+const SESSION_SECRET_FALLBACK = "pv-studio-session-production-key-fallback";
 
 export interface SessionPayload {
   role: "studio_owner";
+  email: string;
   iat: number;
   exp: number;
 }
@@ -14,6 +16,10 @@ export interface VerifyPasswordResult {
   valid: boolean;
   missingConfig?: boolean;
   error?: string;
+}
+
+function getSessionSecret(): string {
+  return process.env.SESSION_SECRET?.trim() || SESSION_SECRET_FALLBACK;
 }
 
 /**
@@ -48,20 +54,19 @@ export function hashPassword(password: string): string {
 }
 
 /**
- * Verifies the studio password against the server-side environment variable.
- * Checks STUDIO_ADMIN_PASSWORD first (primary), then ADMIN_PASSWORD or ADMIN_PASSWORD_HASH as fallback.
- * Uses timing-safe constant-time SHA-256 buffer equality.
+ * Verifies the studio password against ADMIN_PASSWORD_HASH as the single source of truth.
+ * Validates the plain password attempt against the server-side scrypt hash in constant time.
+ * Conflicting variables (STUDIO_ADMIN_PASSWORD, ADMIN_PASSWORD) are ignored.
  */
 export function verifyStudioPassword(passwordAttempt: string): VerifyPasswordResult {
-  const adminPassword = (process.env.STUDIO_ADMIN_PASSWORD || process.env.ADMIN_PASSWORD)?.trim();
   const adminPasswordHash = process.env.ADMIN_PASSWORD_HASH?.trim();
 
-  if (!adminPassword && !adminPasswordHash) {
-    console.error("Studio Auth Error: STUDIO_ADMIN_PASSWORD is not configured in Vercel environment variables.");
+  if (!adminPasswordHash) {
+    console.error("Studio Auth Error: ADMIN_PASSWORD_HASH environment variable is not configured.");
     return {
       valid: false,
       missingConfig: true,
-      error: "Server configuration error: STUDIO_ADMIN_PASSWORD environment variable is not configured in Vercel Production Environment Variables."
+      error: "Server configuration error: ADMIN_PASSWORD_HASH environment variable is not configured in Vercel Production Environment Variables."
     };
   }
 
@@ -73,29 +78,13 @@ export function verifyStudioPassword(passwordAttempt: string): VerifyPasswordRes
     };
   }
 
-  // 1. Primary verification: STUDIO_ADMIN_PASSWORD (supports scrypt hash or plain password)
-  if (adminPassword) {
-    if (adminPassword.startsWith("scrypt:") && verifyPasswordHash(cleanAttempt, adminPassword)) {
-      return { valid: true };
-    }
-
-    const attemptHash = crypto.createHash("sha256").update(cleanAttempt).digest();
-    const targetHash = crypto.createHash("sha256").update(adminPassword).digest();
-    if (crypto.timingSafeEqual(attemptHash, targetHash)) {
-      return { valid: true };
-    }
-  }
-
-  // 2. Fallback verification: scrypt hash if configured
-  if (adminPasswordHash) {
-    if (verifyPasswordHash(cleanAttempt, adminPasswordHash)) {
-      return { valid: true };
-    }
+  if (verifyPasswordHash(cleanAttempt, adminPasswordHash)) {
+    return { valid: true };
   }
 
   return {
     valid: false,
-    error: "Incorrect password. Please try again."
+    error: "Incorrect password. Access is restricted to the verified portfolio owner."
   };
 }
 
@@ -107,11 +96,14 @@ export function verifyAdminCredentials(_emailAttempt: string, passwordAttempt: s
 /**
  * Generates an HMAC-signed session token.
  */
-export function createSessionToken(): string {
-  const secret = process.env.SESSION_SECRET || "pv-studio-session-production-key-fallback";
+export function createSessionToken(email?: string): string {
+  const secret = getSessionSecret();
   const now = Math.floor(Date.now() / 1000);
+  const ownerEmail = (email || process.env.ADMIN_EMAIL || "varunparlapalli2008@gmail.com").trim().toLowerCase();
+
   const payload: SessionPayload = {
     role: "studio_owner",
+    email: ownerEmail,
     iat: now,
     exp: now + SESSION_MAX_AGE_SECONDS
   };
@@ -135,7 +127,7 @@ export function verifySessionToken(token: string | undefined | null): SessionPay
   if (parts.length !== 2) return null;
 
   const [payloadEncoded, signature] = parts;
-  const secret = process.env.SESSION_SECRET || "default-unsecure-fallback-secret";
+  const secret = getSessionSecret();
 
   try {
     const expectedSignature = crypto
