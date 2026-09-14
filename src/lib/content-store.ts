@@ -1,5 +1,3 @@
-import fs from 'fs';
-import path from 'path';
 import { 
   PortfolioProfile, 
   Project, 
@@ -19,7 +17,7 @@ import {
   INITIAL_CURRENTLY_LEARNING
 } from './initial-data';
 
-interface StorageData {
+export interface StorageData {
   profile: PortfolioProfile;
   projects: Project[];
   skills: Skill[];
@@ -29,100 +27,68 @@ interface StorageData {
   currentlyLearning: CurrentlyLearningItem[];
 }
 
-const DATA_DIR = path.join(process.cwd(), 'data');
-const DATA_FILE = path.join(DATA_DIR, 'portfolio-store.json');
+const INITIAL_DATA: StorageData = {
+  profile: INITIAL_PROFILE,
+  projects: INITIAL_PROJECTS,
+  skills: INITIAL_SKILLS,
+  experience: INITIAL_EXPERIENCE,
+  achievements: INITIAL_ACHIEVEMENTS,
+  credentials: INITIAL_CREDENTIALS,
+  currentlyLearning: INITIAL_CURRENTLY_LEARNING
+};
 
-function ensureDataFile(): StorageData {
-  try {
-    if (fs.existsSync(DATA_FILE)) {
-      const content = fs.readFileSync(DATA_FILE, 'utf-8');
-      return JSON.parse(content);
-    }
-  } catch {
-    // fallback to initial data if read fails
-  }
+import { readPortfolioStorage, writePortfolioStorage, type StoragePersistenceResult } from './github-storage.server';
 
-  const initial: StorageData = {
-    profile: INITIAL_PROFILE,
-    projects: INITIAL_PROJECTS,
-    skills: INITIAL_SKILLS,
-    experience: INITIAL_EXPERIENCE,
-    achievements: INITIAL_ACHIEVEMENTS,
-    credentials: INITIAL_CREDENTIALS,
-    currentlyLearning: INITIAL_CURRENTLY_LEARNING
-  };
-
-  try {
-    if (!fs.existsSync(DATA_DIR)) {
-      fs.mkdirSync(DATA_DIR, { recursive: true });
-    }
-    fs.writeFileSync(DATA_FILE, JSON.stringify(initial, null, 2), 'utf-8');
-  } catch {
-    // If running in read-only environment, return initial in-memory
-  }
-
-  return initial;
-}
-
-function saveDataFile(data: StorageData): boolean {
-  try {
-    if (!fs.existsSync(DATA_DIR)) {
-      fs.mkdirSync(DATA_DIR, { recursive: true });
-    }
-    fs.writeFileSync(DATA_FILE, JSON.stringify(data, null, 2), 'utf-8');
-    return true;
-  } catch (error) {
-    console.error('Failed to persist content update:', error);
-    return false;
-  }
+async function getData(): Promise<StorageData> {
+  return readPortfolioStorage<StorageData>(INITIAL_DATA);
 }
 
 // =================== PUBLIC PUBLISHED APIS ===================
 
 export async function getPublishedProfile(): Promise<PortfolioProfile> {
-  const data = ensureDataFile();
+  const data = await getData();
   return data.profile;
 }
 
 export async function getPublishedProjects(): Promise<Project[]> {
-  const data = ensureDataFile();
+  const data = await getData();
   return data.projects
     .filter(p => p.published)
     .sort((a, b) => a.order - b.order);
 }
 
 export async function getPublishedProjectBySlug(slug: string): Promise<Project | null> {
-  const data = ensureDataFile();
+  const data = await getData();
   const project = data.projects.find(p => p.slug === slug && p.published);
   return project || null;
 }
 
 export async function getPublishedSkills(): Promise<Skill[]> {
-  const data = ensureDataFile();
+  const data = await getData();
   return data.skills;
 }
 
 export async function getPublishedExperience(): Promise<Experience[]> {
-  const data = ensureDataFile();
+  const data = await getData();
   return data.experience.filter(e => e.published);
 }
 
 export async function getPublishedAchievements(): Promise<Achievement[]> {
-  const data = ensureDataFile();
+  const data = await getData();
   return data.achievements
     .filter(a => a.published)
     .sort((a, b) => a.order - b.order);
 }
 
 export async function getPublishedCredentials(): Promise<Credential[]> {
-  const data = ensureDataFile();
+  const data = await getData();
   return data.credentials
     .filter(c => c.published)
     .sort((a, b) => a.order - b.order);
 }
 
 export async function getPublishedCurrentlyLearning(): Promise<CurrentlyLearningItem[]> {
-  const data = ensureDataFile();
+  const data = await getData();
   return data.currentlyLearning.filter(l => l.published);
 }
 
@@ -300,9 +266,9 @@ ${snapshot.currentlyLearning.map(l => `
 // =================== STUDIO / AUTHENTICATED MUTATIONS ===================
 
 export async function getAllContentForStudio(): Promise<StorageData> {
-  return ensureDataFile();
+  return getData();
 }
 
-export async function saveStudioContent(updatedData: StorageData): Promise<boolean> {
-  return saveDataFile(updatedData);
+export async function saveStudioContent(updatedData: StorageData): Promise<StoragePersistenceResult> {
+  return writePortfolioStorage(updatedData);
 }

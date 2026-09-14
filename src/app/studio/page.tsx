@@ -1,10 +1,9 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo, useCallback } from "react";
 import Link from "next/link";
 import { 
   ShieldAlert, 
-  ShieldCheck, 
   Save, 
   Plus, 
   Trash2, 
@@ -14,82 +13,241 @@ import {
   Trophy, 
   Wrench, 
   ArrowLeft,
-  AlertTriangle
+  AlertTriangle,
+  LogOut,
+  ChevronUp,
+  ChevronDown,
+  ExternalLink,
+  Briefcase,
+  BookOpen,
+  User,
+  KeyRound,
+  Lock,
+  Mail,
+  X
 } from "lucide-react";
 import Monogram from "@/components/ui/Monogram";
+import type { 
+  Project, 
+  Skill, 
+  Achievement, 
+  Credential, 
+  Experience, 
+  CurrentlyLearningItem
+} from "@/types/portfolio";
+import type { StorageData } from "@/lib/content-store";
 
-const AUTHORIZED_OWNER_EMAIL = "varunparlapalli2008@gmail.com";
+type TabKey = "projects" | "achievements" | "skills" | "experience" | "learning" | "profile";
 
 export default function StudioPage() {
-  const [authEmail, setAuthEmail] = useState("");
+  // Auth state
+  const [sessionChecking, setSessionChecking] = useState(true);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [authenticatedEmail, setAuthenticatedEmail] = useState("");
+  const [loginEmail, setLoginEmail] = useState("");
+  const [loginPassword, setLoginPassword] = useState("");
   const [authError, setAuthError] = useState("");
-  const [content, setContent] = useState<any>(null);
-  const [activeTab, setActiveTab] = useState<"profile" | "projects" | "achievements" | "skills" | "learning">("projects");
+  const [isSubmittingLogin, setIsSubmittingLogin] = useState(false);
+
+  // Content state
+  const [content, setContent] = useState<StorageData | null>(null);
+  const [savedSnapshot, setSavedSnapshot] = useState<string>("");
+  const [activeTab, setActiveTab] = useState<TabKey>("projects");
   const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved" | "error">("idle");
   const [statusMessage, setStatusMessage] = useState("");
 
-  const handleLogin = (emailAttempt: string) => {
-    setAuthError("");
-    const cleanEmail = emailAttempt.trim().toLowerCase();
+  // Delete modal state
+  const [deleteTarget, setDeleteTarget] = useState<{
+    type: "project" | "achievement" | "credential" | "skill" | "experience" | "learning";
+    id: string;
+    name: string;
+  } | null>(null);
 
-    if (cleanEmail !== AUTHORIZED_OWNER_EMAIL) {
-      setAuthError(`Access Denied. The account "${cleanEmail}" is not authorized. Access is strictly granted to the portfolio owner (${AUTHORIZED_OWNER_EMAIL}).`);
-      setIsAuthenticated(false);
-      return;
-    }
-
-    setAuthEmail(cleanEmail);
-    setIsAuthenticated(true);
-    fetchStudioData(cleanEmail);
-  };
-
-  const fetchStudioData = async (email: string) => {
+  const fetchStudioData = useCallback(async () => {
     try {
-      const res = await fetch("/api/studio", {
-        headers: { "x-owner-auth-email": email }
-      });
+      const res = await fetch("/api/studio");
       if (res.ok) {
-        const data = await res.json();
+        const data = (await res.json()) as StorageData;
         setContent(data);
+        setSavedSnapshot(JSON.stringify(data));
       } else {
-        setAuthError("Failed to fetch studio content records.");
+        const err = await res.json().catch(() => ({}));
+        setStatusMessage(err.error || "Failed to fetch studio content.");
+        setSaveStatus("error");
       }
     } catch {
-      setAuthError("Network error while accessing studio.");
+      setStatusMessage("Network error while accessing studio content.");
+      setSaveStatus("error");
+    }
+  }, []);
+
+  // Check existing session on mount
+  useEffect(() => {
+    async function checkSession() {
+      try {
+        const res = await fetch("/api/studio/auth/session");
+        if (res.ok) {
+          const data = await res.json();
+          if (data.authenticated && data.user?.email) {
+            setIsAuthenticated(true);
+            setAuthenticatedEmail(data.user.email);
+            await fetchStudioData();
+          }
+        }
+      } catch (err) {
+        console.error("Session check failed:", err);
+      } finally {
+        setSessionChecking(false);
+      }
+    }
+    checkSession();
+  }, [fetchStudioData]);
+
+  // Has unsaved changes check
+  const hasUnsavedChanges = useMemo(() => {
+    if (!content || !savedSnapshot) return false;
+    return JSON.stringify(content) !== savedSnapshot;
+  }, [content, savedSnapshot]);
+
+  // Warn on tab close with unsaved changes
+  useEffect(() => {
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (hasUnsavedChanges) {
+        e.preventDefault();
+        e.returnValue = "";
+      }
+    };
+    window.addEventListener("beforeunload", handleBeforeUnload);
+    return () => window.removeEventListener("beforeunload", handleBeforeUnload);
+  }, [hasUnsavedChanges]);
+
+  // Login handler
+  const handleLoginSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setAuthError("");
+    setIsSubmittingLogin(true);
+
+    try {
+      const res = await fetch("/api/studio/auth/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          email: loginEmail,
+          password: loginPassword
+        })
+      });
+
+      const data = await res.json().catch(() => ({}));
+
+      if (res.ok && data.success) {
+        setIsAuthenticated(true);
+        setAuthenticatedEmail(data.user.email);
+        setLoginPassword("");
+        await fetchStudioData();
+      } else {
+        setAuthError(data.error || "Authentication failed. Please check your credentials.");
+      }
+    } catch {
+      setAuthError("Network error occurred during login. Please try again.");
+    } finally {
+      setIsSubmittingLogin(false);
     }
   };
 
+  // Logout handler
+  const handleLogout = async () => {
+    if (hasUnsavedChanges) {
+      const confirmLeave = window.confirm(
+        "You have unsaved changes. Are you sure you want to log out without publishing?"
+      );
+      if (!confirmLeave) return;
+    }
+
+    try {
+      await fetch("/api/studio/auth/logout", { method: "POST" });
+    } catch {
+      // Proceed with client logout
+    }
+
+    setIsAuthenticated(false);
+    setAuthenticatedEmail("");
+    setContent(null);
+    setSavedSnapshot("");
+    setLoginPassword("");
+  };
+
+  // Save / Publish handler
   const handleSave = async () => {
     if (!content) return;
     setSaveStatus("saving");
+    setStatusMessage("");
 
     try {
       const res = await fetch("/api/studio", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "x-owner-auth-email": authEmail
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify(content)
       });
 
-      const result = await res.json();
+      const result = await res.json().catch(() => ({}));
       if (res.ok && result.success) {
         setSaveStatus("saved");
-        setStatusMessage("Changes published successfully across the site and AI assistant.");
-        setTimeout(() => setSaveStatus("idle"), 3500);
+        setSavedSnapshot(JSON.stringify(content));
+        setStatusMessage(
+          result.destination === "github"
+            ? "Published and committed to GitHub repository. Live site and AI updated!"
+            : (result.message || "Changes published successfully.")
+        );
+        setTimeout(() => setSaveStatus("idle"), 5000);
       } else {
         setSaveStatus("error");
-        setStatusMessage(result.error || "Failed to save updates.");
+        setStatusMessage(result.error || "Failed to publish updates to storage.");
       }
-    } catch {
+    } catch (err: unknown) {
       setSaveStatus("error");
-      setStatusMessage("Error communicating with publishing pipeline.");
+      setStatusMessage(err instanceof Error ? err.message : "Error communicating with publishing pipeline.");
     }
   };
 
-  // Login Gate
+  // Execution of confirmed deletion
+  const executeDelete = useCallback(() => {
+    if (!deleteTarget || !content) return;
+    const { type, id } = deleteTarget;
+
+    if (type === "project") {
+      setContent(prev => prev ? { ...prev, projects: prev.projects.filter(p => p.id !== id) } : null);
+    } else if (type === "achievement") {
+      setContent(prev => prev ? { ...prev, achievements: prev.achievements.filter(a => a.id !== id) } : null);
+    } else if (type === "credential") {
+      setContent(prev => prev ? { ...prev, credentials: prev.credentials.filter(c => c.id !== id) } : null);
+    } else if (type === "skill") {
+      setContent(prev => prev ? { ...prev, skills: prev.skills.filter(s => s.id !== id) } : null);
+    } else if (type === "experience") {
+      setContent(prev => prev ? { ...prev, experience: prev.experience.filter(e => e.id !== id) } : null);
+    } else if (type === "learning") {
+      setContent(prev => prev ? { ...prev, currentlyLearning: prev.currentlyLearning.filter(l => l.id !== id) } : null);
+    }
+
+    setDeleteTarget(null);
+  }, [deleteTarget, content]);
+
+  // -------------------------------------------------------------
+  // RENDER: Loading Session
+  // -------------------------------------------------------------
+  if (sessionChecking) {
+    return (
+      <div className="min-h-screen bg-[#F7F4EE] flex items-center justify-center p-6 text-sm text-[#68626B]">
+        <div className="flex items-center gap-3">
+          <div className="w-4 h-4 border-2 border-[#590B20] border-t-transparent rounded-full animate-spin" />
+          <span>Verifying studio credentials...</span>
+        </div>
+      </div>
+    );
+  }
+
+  // -------------------------------------------------------------
+  // RENDER: Unauthenticated Login Screen
+  // -------------------------------------------------------------
   if (!isAuthenticated) {
     return (
       <div className="min-h-screen bg-[#F7F4EE] flex items-center justify-center p-6 selection:bg-[#590B20] selection:text-white">
@@ -98,7 +256,7 @@ export default function StudioPage() {
             <Monogram className="w-10 h-11" />
             <div>
               <h1 className="font-display text-xl text-[#20060B]">Royal Atelier Studio</h1>
-              <span className="text-xs text-[#68626B]">Authorized Content Management</span>
+              <span className="text-xs text-[#68626B]">Secure Owner-Only CMS</span>
             </div>
           </div>
 
@@ -107,7 +265,7 @@ export default function StudioPage() {
               <ShieldAlert className="w-4 h-4 text-[#AC9062]" />
               <span>Owner Authentication Gate</span>
             </div>
-            Access is restricted to the authorized owner account (<span className="text-[#20060B] font-medium">{AUTHORIZED_OWNER_EMAIL}</span>). Unrelated accounts and anonymous visitors have zero write capability.
+            Sign in with your owner credentials to manage portfolio projects, achievements, credentials, skills, experience, and identity.
           </div>
 
           {authError && (
@@ -117,22 +275,54 @@ export default function StudioPage() {
             </div>
           )}
 
-          <div className="space-y-3">
-            <button
-              onClick={() => handleLogin(AUTHORIZED_OWNER_EMAIL)}
-              className="w-full py-3 px-4 rounded-xl bg-[#590B20] text-white text-xs font-semibold hover:bg-[#430717] transition-all flex items-center justify-center gap-2 cursor-pointer shadow-sm"
-            >
-              <ShieldCheck className="w-4 h-4 text-[#AC9062]" />
-              <span>Sign In as {AUTHORIZED_OWNER_EMAIL}</span>
-            </button>
+          <form onSubmit={handleLoginSubmit} className="space-y-4">
+            <div>
+              <label className="block text-xs font-medium text-[#20060B] mb-1.5 flex items-center gap-1.5">
+                <Mail className="w-3.5 h-3.5 text-[#AC9062]" />
+                <span>Owner Email</span>
+              </label>
+              <input
+                type="email"
+                required
+                autoComplete="email"
+                placeholder="varunparlapalli2008@gmail.com"
+                value={loginEmail}
+                onChange={(e) => setLoginEmail(e.target.value)}
+                className="w-full px-3.5 py-2.5 rounded-xl border border-[#D9CCB8] bg-[#FAF8F3] text-sm text-[#20060B] placeholder-[#68626B]/50 focus:outline-none focus:ring-2 focus:ring-[#590B20]"
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-medium text-[#20060B] mb-1.5 flex items-center gap-1.5">
+                <Lock className="w-3.5 h-3.5 text-[#AC9062]" />
+                <span>Password</span>
+              </label>
+              <input
+                type="password"
+                required
+                autoComplete="current-password"
+                placeholder="••••••••"
+                value={loginPassword}
+                onChange={(e) => setLoginPassword(e.target.value)}
+                className="w-full px-3.5 py-2.5 rounded-xl border border-[#D9CCB8] bg-[#FAF8F3] text-sm text-[#20060B] placeholder-[#68626B]/50 focus:outline-none focus:ring-2 focus:ring-[#590B20]"
+              />
+            </div>
 
             <button
-              onClick={() => handleLogin("unrelated.visitor@example.com")}
-              className="w-full py-2.5 px-4 rounded-xl bg-transparent border border-[#D9CCB8] text-xs text-[#68626B] hover:text-[#20060B] hover:border-[#AC9062] transition-colors cursor-pointer"
+              type="submit"
+              disabled={isSubmittingLogin}
+              className="w-full py-3 px-4 rounded-xl bg-[#590B20] text-white text-xs font-semibold hover:bg-[#430717] transition-all flex items-center justify-center gap-2 cursor-pointer shadow-sm disabled:opacity-50"
             >
-              Simulate Sign-in with Unrelated Account
+              {isSubmittingLogin ? (
+                <span>Authenticating...</span>
+              ) : (
+                <>
+                  <KeyRound className="w-4 h-4 text-[#AC9062]" />
+                  <span>Sign In to Studio</span>
+                </>
+              )}
             </button>
-          </div>
+          </form>
 
           <div className="mt-6 pt-4 border-t border-[#E8DFD1] text-center">
             <Link href="/" className="text-xs text-[#590B20] hover:underline inline-flex items-center gap-1">
@@ -145,18 +335,27 @@ export default function StudioPage() {
     );
   }
 
+  // -------------------------------------------------------------
+  // RENDER: Loading Studio Content
+  // -------------------------------------------------------------
   if (!content) {
     return (
       <div className="min-h-screen bg-[#F7F4EE] flex items-center justify-center p-6 text-sm text-[#68626B]">
-        Loading portfolio content store...
+        <div className="flex items-center gap-3">
+          <div className="w-4 h-4 border-2 border-[#590B20] border-t-transparent rounded-full animate-spin" />
+          <span>Loading portfolio content store...</span>
+        </div>
       </div>
     );
   }
 
+  // -------------------------------------------------------------
+  // RENDER: Authenticated Studio CMS
+  // -------------------------------------------------------------
   return (
     <div className="min-h-screen bg-[#F7F4EE] flex flex-col font-sans selection:bg-[#590B20] selection:text-white">
       {/* Studio Header */}
-      <header className="w-full border-b border-[#D9CCB8] bg-white sticky top-0 z-30 px-6 lg:px-12 py-3.5 flex items-center justify-between">
+      <header className="w-full border-b border-[#D9CCB8] bg-white sticky top-0 z-30 px-6 lg:px-12 py-3.5 flex flex-wrap items-center justify-between gap-4">
         <div className="flex items-center gap-4">
           <Link href="/">
             <Monogram className="w-8 h-9" />
@@ -167,8 +366,14 @@ export default function StudioPage() {
               <span className="px-2 py-0.5 rounded text-[10px] bg-[#590B20]/10 text-[#590B20] font-semibold">
                 Owner Mode
               </span>
+              {hasUnsavedChanges && (
+                <span className="px-2 py-0.5 rounded text-[10px] bg-amber-100 text-amber-900 font-semibold flex items-center gap-1">
+                  <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse" />
+                  Unsaved Changes
+                </span>
+              )}
             </div>
-            <span className="text-[11px] text-[#68626B]">{authEmail}</span>
+            <span className="text-[11px] text-[#68626B]">{authenticatedEmail}</span>
           </div>
         </div>
 
@@ -179,16 +384,29 @@ export default function StudioPage() {
             className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg border border-[#D9CCB8] text-xs text-[#68626B] hover:text-[#20060B] hover:border-[#AC9062] transition-colors"
           >
             <Eye className="w-3.5 h-3.5" />
-            <span>View Public Site</span>
+            <span>Public Site</span>
           </Link>
 
           <button
             onClick={handleSave}
             disabled={saveStatus === "saving"}
-            className="inline-flex items-center gap-2 px-5 py-2 rounded-lg bg-[#590B20] text-white text-xs font-semibold hover:bg-[#430717] disabled:opacity-50 transition-all cursor-pointer shadow-sm"
+            className={`inline-flex items-center gap-2 px-5 py-2 rounded-lg text-xs font-semibold transition-all cursor-pointer shadow-sm disabled:opacity-50 ${
+              hasUnsavedChanges
+                ? "bg-[#590B20] text-white hover:bg-[#430717] ring-2 ring-[#AC9062]"
+                : "bg-[#20060B] text-white hover:bg-[#590B20]"
+            }`}
           >
-            <Save className="w-3.5 h-3.5" />
-            <span>{saveStatus === "saving" ? "Publishing..." : "Publish Updates"}</span>
+            <Save className="w-3.5 h-3.5 text-[#AC9062]" />
+            <span>{saveStatus === "saving" ? "Publishing..." : hasUnsavedChanges ? "Publish Updates*" : "Publish Updates"}</span>
+          </button>
+
+          <button
+            onClick={handleLogout}
+            title="Log out of Studio"
+            className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg border border-[#D9CCB8] text-xs text-red-700 hover:bg-red-50 hover:border-red-300 transition-colors cursor-pointer"
+          >
+            <LogOut className="w-3.5 h-3.5" />
+            <span className="hidden sm:inline">Logout</span>
           </button>
         </div>
       </header>
@@ -203,8 +421,14 @@ export default function StudioPage() {
 
       {saveStatus === "error" && (
         <div className="bg-red-50 border-b border-red-200 px-6 py-2.5 text-xs text-red-800 flex items-center justify-center gap-2">
-          <AlertTriangle className="w-4 h-4 text-red-600" />
+          <AlertTriangle className="w-4 h-4 text-red-600 shrink-0" />
           <span>{statusMessage}</span>
+        </div>
+      )}
+
+      {hasUnsavedChanges && saveStatus !== "saved" && (
+        <div className="bg-amber-50 border-b border-amber-200 px-6 py-2 text-xs text-amber-900 flex items-center justify-center gap-2">
+          <span>You have unsaved changes in the studio. Click <strong>Publish Updates</strong> to commit your changes to production.</span>
         </div>
       )}
 
@@ -214,15 +438,16 @@ export default function StudioPage() {
           { id: "projects", label: "Projects", icon: Layers },
           { id: "achievements", label: "Achievements & Credentials", icon: Trophy },
           { id: "skills", label: "Skills", icon: Wrench },
-          { id: "learning", label: "Currently Learning", icon: Plus },
-          { id: "profile", label: "Profile & Identity", icon: ShieldCheck }
+          { id: "experience", label: "Experience", icon: Briefcase },
+          { id: "learning", label: "Currently Learning", icon: BookOpen },
+          { id: "profile", label: "Profile & Identity", icon: User }
         ].map((tab) => {
           const Icon = tab.icon;
           const isActive = activeTab === tab.id;
           return (
             <button
               key={tab.id}
-              onClick={() => setActiveTab(tab.id as any)}
+              onClick={() => setActiveTab(tab.id as TabKey)}
               className={`py-3.5 border-b-2 flex items-center gap-2 transition-all cursor-pointer whitespace-nowrap ${
                 isActive
                   ? "border-[#590B20] text-[#590B20] font-semibold"
@@ -238,22 +463,24 @@ export default function StudioPage() {
 
       {/* Main Studio Content Area */}
       <main className="flex-1 max-w-[1400px] mx-auto w-full p-6 lg:p-12">
-        {/* PROJECTS TAB */}
+        {/* ========================================================= */}
+        {/* TAB 1: PROJECTS */}
+        {/* ========================================================= */}
         {activeTab === "projects" && (
           <div className="space-y-6">
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
               <div>
                 <h2 className="font-display text-2xl text-[#20060B]">Manage Projects</h2>
                 <p className="text-xs text-[#68626B]">
-                  Edit project narratives, manage Draft/Published visibility, and update case studies.
+                  Add, edit, reorder, and configure live & repository links for project case studies.
                 </p>
               </div>
               <button
                 onClick={() => {
-                  const newProj = {
+                  const newProj: Project = {
                     id: `proj-${Date.now()}`,
                     slug: `new-project-${Date.now().toString().slice(-4)}`,
-                    title: "New Project Prototype",
+                    title: "New Project Title",
                     tagline: "Brief description of the digital product.",
                     category: "Frontend & UI/UX",
                     role: "Frontend Developer",
@@ -263,7 +490,7 @@ export default function StudioPage() {
                     technologies: ["React", "TypeScript", "Tailwind CSS"],
                     overview: "Project overview and objectives.",
                     problem: "Specific problem addressed.",
-                    intendedUsers: ["Target Audience"],
+                    intendedUsers: ["Enrolled students", "Faculty"],
                     teamContext: "Independent development.",
                     featuresBuilt: ["Initial responsive interface prototype"],
                     challenges: ["Balancing performance with visual polish"],
@@ -272,27 +499,29 @@ export default function StudioPage() {
                     liveUrl: "",
                     repoUrl: "",
                     published: false,
-                    order: content.projects.length + 1
+                    order: content.projects.length + 1,
+                    previewType: "authentic"
                   };
                   setContent({ ...content, projects: [...content.projects, newProj] });
                 }}
-                className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-[#590B20] text-white text-xs font-medium hover:bg-[#430717] cursor-pointer"
+                className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-[#590B20] text-white text-xs font-medium hover:bg-[#430717] cursor-pointer self-start sm:self-auto shadow-xs"
               >
                 <Plus className="w-3.5 h-3.5" />
-                <span>Add Project Draft</span>
+                <span>Add New Project</span>
               </button>
             </div>
 
-            <div className="space-y-4">
-              {content.projects.map((proj: any, index: number) => (
+            <div className="space-y-6">
+              {content.projects.map((proj, index) => (
                 <div
                   key={proj.id}
                   className="p-6 bg-white rounded-xl border border-[#D9CCB8] shadow-xs space-y-4"
                 >
+                  {/* Card Header & Controls */}
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-[#E8DFD1]">
                     <div className="flex items-center gap-3">
                       <span className="font-display text-lg text-[#20060B] font-medium">
-                        {proj.title}
+                        {proj.title || "Untitled Project"}
                       </span>
                       <span
                         className={`text-[10px] px-2.5 py-0.5 rounded-full font-medium ${
@@ -301,33 +530,71 @@ export default function StudioPage() {
                             : "bg-amber-100 text-amber-800"
                         }`}
                       >
-                        {proj.published ? "Published" : "Draft (Hidden from Public & AI)"}
+                        {proj.published ? "Published" : "Draft"}
                       </span>
+                      {proj.featured && (
+                        <span className="text-[10px] px-2 py-0.5 rounded-full bg-[#AC9062]/20 text-[#20060B] font-medium">
+                          Featured
+                        </span>
+                      )}
                     </div>
 
                     <div className="flex items-center gap-2">
+                      {/* Reorder Buttons */}
+                      <button
+                        disabled={index === 0}
+                        onClick={() => {
+                          if (index === 0) return;
+                          const newProjects = [...content.projects];
+                          const temp = newProjects[index - 1];
+                          newProjects[index - 1] = newProjects[index];
+                          newProjects[index] = temp;
+                          newProjects.forEach((p, idx) => (p.order = idx + 1));
+                          setContent({ ...content, projects: newProjects });
+                        }}
+                        className="p-1.5 border border-[#D9CCB8] rounded text-[#68626B] hover:text-[#20060B] disabled:opacity-30 cursor-pointer"
+                        title="Move Up"
+                      >
+                        <ChevronUp className="w-3.5 h-3.5" />
+                      </button>
+                      <button
+                        disabled={index === content.projects.length - 1}
+                        onClick={() => {
+                          if (index === content.projects.length - 1) return;
+                          const newProjects = [...content.projects];
+                          const temp = newProjects[index + 1];
+                          newProjects[index + 1] = newProjects[index];
+                          newProjects[index] = temp;
+                          newProjects.forEach((p, idx) => (p.order = idx + 1));
+                          setContent({ ...content, projects: newProjects });
+                        }}
+                        className="p-1.5 border border-[#D9CCB8] rounded text-[#68626B] hover:text-[#20060B] disabled:opacity-30 cursor-pointer"
+                        title="Move Down"
+                      >
+                        <ChevronDown className="w-3.5 h-3.5" />
+                      </button>
+
+                      {/* Publish / Draft Toggle */}
                       <button
                         onClick={() => {
-                          const updated = content.projects.map((p: any) =>
+                          const updated = content.projects.map((p) =>
                             p.id === proj.id ? { ...p, published: !p.published } : p
                           );
                           setContent({ ...content, projects: updated });
                         }}
-                        className="px-3 py-1.5 rounded text-xs border border-[#D9CCB8] text-[#20060B] hover:bg-[#FAF8F3] cursor-pointer"
+                        className={`text-xs px-3 py-1.5 rounded-md font-medium border transition-colors cursor-pointer ${
+                          proj.published
+                            ? "border-emerald-300 text-emerald-800 hover:bg-emerald-50"
+                            : "border-amber-300 text-amber-800 hover:bg-amber-50"
+                        }`}
                       >
-                        {proj.published ? "Unpublish to Draft" : "Publish to Site"}
+                        {proj.published ? "Unpublish to Draft" : "Mark Published"}
                       </button>
 
+                      {/* Delete Button */}
                       <button
-                        onClick={() => {
-                          if (confirm(`Are you sure you want to delete "${proj.title}"?`)) {
-                            setContent({
-                              ...content,
-                              projects: content.projects.filter((p: any) => p.id !== proj.id)
-                            });
-                          }
-                        }}
-                        className="p-1.5 text-red-600 hover:text-red-800 rounded cursor-pointer"
+                        onClick={() => setDeleteTarget({ type: "project", id: proj.id, name: proj.title })}
+                        className="p-1.5 text-red-600 hover:bg-red-50 rounded border border-transparent hover:border-red-200 transition-colors cursor-pointer"
                         title="Delete project"
                       >
                         <Trash2 className="w-4 h-4" />
@@ -335,96 +602,206 @@ export default function StudioPage() {
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
+                  {/* Fields Grid */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 text-xs">
                     <div>
-                      <label className="block text-[#68626B] mb-1 font-medium">Project Title</label>
+                      <label className="block text-[#68626B] font-medium mb-1">Project Title</label>
                       <input
                         type="text"
                         value={proj.title}
                         onChange={(e) => {
-                          const updated = content.projects.map((p: any) =>
+                          const updated = content.projects.map((p) =>
                             p.id === proj.id ? { ...p, title: e.target.value } : p
                           );
                           setContent({ ...content, projects: updated });
                         }}
-                        className="w-full bg-[#FAF8F3] border border-[#D9CCB8] rounded px-3 py-2 text-[#20060B]"
+                        className="w-full px-3 py-1.5 rounded border border-[#D9CCB8] bg-[#FAF8F3] text-[#20060B]"
                       />
                     </div>
 
                     <div>
-                      <label className="block text-[#68626B] mb-1 font-medium">URL Slug</label>
+                      <label className="block text-[#68626B] font-medium mb-1">Slug (URL identifier)</label>
                       <input
                         type="text"
                         value={proj.slug}
                         onChange={(e) => {
-                          const updated = content.projects.map((p: any) =>
+                          const updated = content.projects.map((p) =>
                             p.id === proj.id ? { ...p, slug: e.target.value } : p
                           );
                           setContent({ ...content, projects: updated });
                         }}
-                        className="w-full bg-[#FAF8F3] border border-[#D9CCB8] rounded px-3 py-2 text-[#20060B]"
+                        className="w-full px-3 py-1.5 rounded border border-[#D9CCB8] bg-[#FAF8F3] text-[#20060B]"
                       />
                     </div>
 
-                    <div className="sm:col-span-2">
-                      <label className="block text-[#68626B] mb-1 font-medium">Tagline / Summary</label>
+                    <div>
+                      <label className="block text-[#68626B] font-medium mb-1">Category</label>
+                      <select
+                        value={proj.category}
+                        onChange={(e) => {
+                          const updated = content.projects.map((p) =>
+                            p.id === proj.id ? { ...p, category: e.target.value as Project["category"] } : p
+                          );
+                          setContent({ ...content, projects: updated });
+                        }}
+                        className="w-full px-3 py-1.5 rounded border border-[#D9CCB8] bg-[#FAF8F3] text-[#20060B]"
+                      >
+                        <option value="Frontend & UI/UX">Frontend & UI/UX</option>
+                        <option value="Systems & AI">Systems & AI</option>
+                        <option value="Academic">Academic</option>
+                        <option value="Full Stack">Full Stack</option>
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="block text-[#68626B] font-medium mb-1">Role</label>
+                      <input
+                        type="text"
+                        value={proj.role}
+                        onChange={(e) => {
+                          const updated = content.projects.map((p) =>
+                            p.id === proj.id ? { ...p, role: e.target.value } : p
+                          );
+                          setContent({ ...content, projects: updated });
+                        }}
+                        className="w-full px-3 py-1.5 rounded border border-[#D9CCB8] bg-[#FAF8F3] text-[#20060B]"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-[#68626B] font-medium mb-1">Status</label>
+                      <select
+                        value={proj.status}
+                        onChange={(e) => {
+                          const updated = content.projects.map((p) =>
+                            p.id === proj.id ? { ...p, status: e.target.value as Project["status"] } : p
+                          );
+                          setContent({ ...content, projects: updated });
+                        }}
+                        className="w-full px-3 py-1.5 rounded border border-[#D9CCB8] bg-[#FAF8F3] text-[#20060B]"
+                      >
+                        <option value="Active">Active</option>
+                        <option value="Concept">Concept</option>
+                        <option value="In Development">In Development</option>
+                        <option value="Completed">Completed</option>
+                      </select>
+                    </div>
+
+                    <div className="flex items-center gap-3 pt-5">
+                      <label className="flex items-center gap-2 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={proj.featured}
+                          onChange={(e) => {
+                            const updated = content.projects.map((p) =>
+                              p.id === proj.id ? { ...p, featured: e.target.checked } : p
+                            );
+                            setContent({ ...content, projects: updated });
+                          }}
+                          className="rounded border-[#D9CCB8] text-[#590B20] focus:ring-[#590B20]"
+                        />
+                        <span className="text-[#20060B] font-medium">Feature on Homepage</span>
+                      </label>
+                    </div>
+
+                    <div className="md:col-span-2 lg:col-span-3">
+                      <label className="block text-[#68626B] font-medium mb-1">Tagline</label>
                       <input
                         type="text"
                         value={proj.tagline}
                         onChange={(e) => {
-                          const updated = content.projects.map((p: any) =>
+                          const updated = content.projects.map((p) =>
                             p.id === proj.id ? { ...p, tagline: e.target.value } : p
                           );
                           setContent({ ...content, projects: updated });
                         }}
-                        className="w-full bg-[#FAF8F3] border border-[#D9CCB8] rounded px-3 py-2 text-[#20060B]"
+                        className="w-full px-3 py-1.5 rounded border border-[#D9CCB8] bg-[#FAF8F3] text-[#20060B]"
                       />
                     </div>
 
-                    <div className="sm:col-span-2">
-                      <label className="block text-[#68626B] mb-1 font-medium">Personal Contribution</label>
-                      <textarea
-                        rows={2}
-                        value={proj.contribution}
-                        onChange={(e) => {
-                          const updated = content.projects.map((p: any) =>
-                            p.id === proj.id ? { ...p, contribution: e.target.value } : p
-                          );
-                          setContent({ ...content, projects: updated });
-                        }}
-                        className="w-full bg-[#FAF8F3] border border-[#D9CCB8] rounded px-3 py-2 text-[#20060B] resize-none"
-                      />
-                    </div>
-
+                    {/* Web Links */}
                     <div>
-                      <label className="block text-[#68626B] mb-1 font-medium">Live Demo URL</label>
+                      <label className="block text-[#68626B] font-medium mb-1 flex items-center gap-1">
+                        <ExternalLink className="w-3 h-3 text-[#AC9062]" />
+                        <span>Live Website URL</span>
+                      </label>
                       <input
                         type="url"
-                        placeholder="https://example.vercel.app/"
+                        placeholder="https://example.com"
                         value={proj.liveUrl || ""}
                         onChange={(e) => {
-                          const updated = content.projects.map((p: any) =>
+                          const updated = content.projects.map((p) =>
                             p.id === proj.id ? { ...p, liveUrl: e.target.value } : p
                           );
                           setContent({ ...content, projects: updated });
                         }}
-                        className="w-full bg-[#FAF8F3] border border-[#D9CCB8] rounded px-3 py-2 text-[#20060B]"
+                        className="w-full px-3 py-1.5 rounded border border-[#D9CCB8] bg-[#FAF8F3] text-[#20060B]"
                       />
                     </div>
 
                     <div>
-                      <label className="block text-[#68626B] mb-1 font-medium">GitHub Repository URL</label>
+                      <label className="block text-[#68626B] font-medium mb-1 flex items-center gap-1">
+                        <ExternalLink className="w-3 h-3 text-[#AC9062]" />
+                        <span>GitHub Repository URL</span>
+                      </label>
                       <input
                         type="url"
-                        placeholder="https://github.com/username/repo"
+                        placeholder="https://github.com/owner/repo"
                         value={proj.repoUrl || ""}
                         onChange={(e) => {
-                          const updated = content.projects.map((p: any) =>
+                          const updated = content.projects.map((p) =>
                             p.id === proj.id ? { ...p, repoUrl: e.target.value } : p
                           );
                           setContent({ ...content, projects: updated });
                         }}
-                        className="w-full bg-[#FAF8F3] border border-[#D9CCB8] rounded px-3 py-2 text-[#20060B]"
+                        className="w-full px-3 py-1.5 rounded border border-[#D9CCB8] bg-[#FAF8F3] text-[#20060B]"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-[#68626B] font-medium mb-1">Technologies (comma-separated)</label>
+                      <input
+                        type="text"
+                        value={proj.technologies.join(", ")}
+                        onChange={(e) => {
+                          const techs = e.target.value.split(",").map((t) => t.trim()).filter(Boolean);
+                          const updated = content.projects.map((p) =>
+                            p.id === proj.id ? { ...p, technologies: techs } : p
+                          );
+                          setContent({ ...content, projects: updated });
+                        }}
+                        className="w-full px-3 py-1.5 rounded border border-[#D9CCB8] bg-[#FAF8F3] text-[#20060B]"
+                      />
+                    </div>
+
+                    <div className="md:col-span-2 lg:col-span-3">
+                      <label className="block text-[#68626B] font-medium mb-1">Overview</label>
+                      <textarea
+                        rows={2}
+                        value={proj.overview}
+                        onChange={(e) => {
+                          const updated = content.projects.map((p) =>
+                            p.id === proj.id ? { ...p, overview: e.target.value } : p
+                          );
+                          setContent({ ...content, projects: updated });
+                        }}
+                        className="w-full px-3 py-1.5 rounded border border-[#D9CCB8] bg-[#FAF8F3] text-[#20060B]"
+                      />
+                    </div>
+
+                    <div className="md:col-span-2 lg:col-span-3">
+                      <label className="block text-[#68626B] font-medium mb-1">Features Built (one per line)</label>
+                      <textarea
+                        rows={3}
+                        value={proj.featuresBuilt.join("\n")}
+                        onChange={(e) => {
+                          const lines = e.target.value.split("\n").map((l) => l.trim()).filter(Boolean);
+                          const updated = content.projects.map((p) =>
+                            p.id === proj.id ? { ...p, featuresBuilt: lines } : p
+                          );
+                          setContent({ ...content, projects: updated });
+                        }}
+                        className="w-full px-3 py-1.5 rounded border border-[#D9CCB8] bg-[#FAF8F3] text-[#20060B]"
                       />
                     </div>
                   </div>
@@ -434,209 +811,425 @@ export default function StudioPage() {
           </div>
         )}
 
-        {/* ACHIEVEMENTS & CREDENTIALS TAB */}
+        {/* ========================================================= */}
+        {/* TAB 2: ACHIEVEMENTS & CREDENTIALS */}
+        {/* ========================================================= */}
         {activeTab === "achievements" && (
-          <div className="space-y-8">
-            <div className="flex items-center justify-between pb-4 border-b border-[#D9CCB8]">
-              <div>
-                <h2 className="font-display text-2xl text-[#20060B]">Achievements &amp; Published Credentials</h2>
-                <p className="text-xs text-[#68626B]">
-                  Manage competitive hackathons, certificates of completion, course modules, learning journeys, and private draft credentials.
-                </p>
-              </div>
-            </div>
-
-            {/* 1. Hackathons & Competitions */}
-            <div className="space-y-4">
-              <div className="flex items-center gap-2">
-                <Trophy className="w-4 h-4 text-[#AC9062]" />
-                <h3 className="font-display text-lg text-[#20060B]">Competitive Hackathons</h3>
+          <div className="space-y-12">
+            {/* Section A: Achievements */}
+            <div className="space-y-6">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div>
+                  <h2 className="font-display text-2xl text-[#20060B]">Hackathons & Competitions</h2>
+                  <p className="text-xs text-[#68626B]">
+                    Document verified hackathon placements, awards, and team distinctions.
+                  </p>
+                </div>
+                <button
+                  onClick={() => {
+                    const newAch: Achievement = {
+                      id: `ach-${Date.now()}`,
+                      title: "Achievement Title",
+                      event: "Event Name",
+                      organizer: "Organizer Organization",
+                      result: "1st Place / Finalist",
+                      type: "Hackathon",
+                      teamOrIndividual: "Individual",
+                      year: "2026",
+                      description: "Summary of the competition sprint and solution.",
+                      verified: true,
+                      published: true,
+                      order: content.achievements.length + 1,
+                      evidenceUrl: ""
+                    };
+                    setContent({ ...content, achievements: [...content.achievements, newAch] });
+                  }}
+                  className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-[#590B20] text-white text-xs font-medium hover:bg-[#430717] cursor-pointer self-start sm:self-auto shadow-xs"
+                >
+                  <Plus className="w-3.5 h-3.5" />
+                  <span>Add Achievement</span>
+                </button>
               </div>
 
               <div className="space-y-4">
-                {content.achievements?.map((ach: any) => (
-                  <div key={ach.id} className="p-6 bg-white rounded-xl border border-[#D9CCB8] shadow-xs space-y-3">
+                {content.achievements.map((ach, idx) => (
+                  <div key={ach.id} className="p-6 bg-white rounded-xl border border-[#D9CCB8] space-y-4">
                     <div className="flex items-center justify-between pb-3 border-b border-[#E8DFD1]">
-                      <div className="flex items-center gap-2">
-                        <span className="font-display text-base text-[#20060B]">{ach.event}</span>
-                        <span className="text-xs text-[#590B20] font-medium">— {ach.result}</span>
+                      <div className="flex items-center gap-3">
+                        <span className="font-display text-base text-[#20060B] font-medium">{ach.title}</span>
+                        <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${ach.published ? "bg-emerald-100 text-emerald-800" : "bg-amber-100 text-amber-800"}`}>
+                          {ach.published ? "Published" : "Draft"}
+                        </span>
                       </div>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          const updated = content.achievements.map((a: any) =>
-                            a.id === ach.id ? { ...a, published: !a.published } : a
-                          );
-                          setContent({ ...content, achievements: updated });
-                        }}
-                        className={`text-xs px-2.5 py-1 rounded border cursor-pointer ${
-                          ach.published
-                            ? "bg-emerald-50 text-emerald-800 border-emerald-200"
-                            : "bg-amber-50 text-amber-800 border-amber-200"
-                        }`}
-                      >
-                        {ach.published ? "Published" : "Draft"}
-                      </button>
+                      <div className="flex items-center gap-2">
+                        <button
+                          disabled={idx === 0}
+                          onClick={() => {
+                            if (idx === 0) return;
+                            const copy = [...content.achievements];
+                            const tmp = copy[idx - 1];
+                            copy[idx - 1] = copy[idx];
+                            copy[idx] = tmp;
+                            copy.forEach((a, i) => (a.order = i + 1));
+                            setContent({ ...content, achievements: copy });
+                          }}
+                          className="p-1 border border-[#D9CCB8] rounded text-[#68626B] hover:text-[#20060B] disabled:opacity-30 cursor-pointer"
+                        >
+                          <ChevronUp className="w-3.5 h-3.5" />
+                        </button>
+                        <button
+                          disabled={idx === content.achievements.length - 1}
+                          onClick={() => {
+                            if (idx === content.achievements.length - 1) return;
+                            const copy = [...content.achievements];
+                            const tmp = copy[idx + 1];
+                            copy[idx + 1] = copy[idx];
+                            copy[idx] = tmp;
+                            copy.forEach((a, i) => (a.order = i + 1));
+                            setContent({ ...content, achievements: copy });
+                          }}
+                          className="p-1 border border-[#D9CCB8] rounded text-[#68626B] hover:text-[#20060B] disabled:opacity-30 cursor-pointer"
+                        >
+                          <ChevronDown className="w-3.5 h-3.5" />
+                        </button>
+                        <button
+                          onClick={() => {
+                            const updated = content.achievements.map((a) =>
+                              a.id === ach.id ? { ...a, published: !a.published } : a
+                            );
+                            setContent({ ...content, achievements: updated });
+                          }}
+                          className={`text-xs px-2.5 py-1 rounded border font-medium cursor-pointer ${
+                            ach.published ? "border-emerald-300 text-emerald-800" : "border-amber-300 text-amber-800"
+                          }`}
+                        >
+                          {ach.published ? "Draft" : "Publish"}
+                        </button>
+                        <button
+                          onClick={() => setDeleteTarget({ type: "achievement", id: ach.id, name: ach.title })}
+                          className="p-1.5 text-red-600 hover:bg-red-50 rounded cursor-pointer"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
                     </div>
-                    <p className="text-xs text-[#68626B]">{ach.description}</p>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 text-xs">
+                      <div>
+                        <label className="block text-[#68626B] mb-1">Title</label>
+                        <input
+                          type="text"
+                          value={ach.title}
+                          onChange={(e) => {
+                            const updated = content.achievements.map((a) =>
+                              a.id === ach.id ? { ...a, title: e.target.value } : a
+                            );
+                            setContent({ ...content, achievements: updated });
+                          }}
+                          className="w-full px-3 py-1.5 rounded border border-[#D9CCB8] bg-[#FAF8F3]"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-[#68626B] mb-1">Event</label>
+                        <input
+                          type="text"
+                          value={ach.event}
+                          onChange={(e) => {
+                            const updated = content.achievements.map((a) =>
+                              a.id === ach.id ? { ...a, event: e.target.value } : a
+                            );
+                            setContent({ ...content, achievements: updated });
+                          }}
+                          className="w-full px-3 py-1.5 rounded border border-[#D9CCB8] bg-[#FAF8F3]"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-[#68626B] mb-1">Result</label>
+                        <input
+                          type="text"
+                          value={ach.result}
+                          onChange={(e) => {
+                            const updated = content.achievements.map((a) =>
+                              a.id === ach.id ? { ...a, result: e.target.value } : a
+                            );
+                            setContent({ ...content, achievements: updated });
+                          }}
+                          className="w-full px-3 py-1.5 rounded border border-[#D9CCB8] bg-[#FAF8F3]"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-[#68626B] mb-1">Year</label>
+                        <input
+                          type="text"
+                          value={ach.year}
+                          onChange={(e) => {
+                            const updated = content.achievements.map((a) =>
+                              a.id === ach.id ? { ...a, year: e.target.value } : a
+                            );
+                            setContent({ ...content, achievements: updated });
+                          }}
+                          className="w-full px-3 py-1.5 rounded border border-[#D9CCB8] bg-[#FAF8F3]"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-[#68626B] mb-1">Evidence / Proof URL</label>
+                        <input
+                          type="url"
+                          placeholder="https://..."
+                          value={ach.evidenceUrl || ""}
+                          onChange={(e) => {
+                            const updated = content.achievements.map((a) =>
+                              a.id === ach.id ? { ...a, evidenceUrl: e.target.value } : a
+                            );
+                            setContent({ ...content, achievements: updated });
+                          }}
+                          className="w-full px-3 py-1.5 rounded border border-[#D9CCB8] bg-[#FAF8F3]"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-[#68626B] mb-1">Format</label>
+                        <select
+                          value={ach.teamOrIndividual}
+                          onChange={(e) => {
+                            const updated = content.achievements.map((a) =>
+                              a.id === ach.id ? { ...a, teamOrIndividual: e.target.value as Achievement["teamOrIndividual"] } : a
+                            );
+                            setContent({ ...content, achievements: updated });
+                          }}
+                          className="w-full px-3 py-1.5 rounded border border-[#D9CCB8] bg-[#FAF8F3]"
+                        >
+                          <option value="Individual">Individual</option>
+                          <option value="Team">Team</option>
+                        </select>
+                      </div>
+                      <div className="md:col-span-2 lg:col-span-3">
+                        <label className="block text-[#68626B] mb-1">Summary Description</label>
+                        <textarea
+                          rows={2}
+                          value={ach.description}
+                          onChange={(e) => {
+                            const updated = content.achievements.map((a) =>
+                              a.id === ach.id ? { ...a, description: e.target.value } : a
+                            );
+                            setContent({ ...content, achievements: updated });
+                          }}
+                          className="w-full px-3 py-1.5 rounded border border-[#D9CCB8] bg-[#FAF8F3]"
+                        />
+                      </div>
+                    </div>
                   </div>
                 ))}
               </div>
             </div>
 
-            {/* 2. Credentials & Certificates (with Private Drafts) */}
-            <div className="space-y-4 pt-4 border-t border-[#D9CCB8]">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <ShieldCheck className="w-4 h-4 text-[#AC9062]" />
-                  <h3 className="font-display text-lg text-[#20060B]">Credentials &amp; Certificates Directory</h3>
+            {/* Section B: Credentials */}
+            <div className="space-y-6 pt-6 border-t border-[#D9CCB8]">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div>
+                  <h2 className="font-display text-2xl text-[#20060B]">Learning Credentials & Certificates</h2>
+                  <p className="text-xs text-[#68626B]">
+                    Configure course badges, learning journeys, and certification links.
+                  </p>
                 </div>
-                <span className="text-xs font-mono text-[#68626B]">
-                  Total: {content.credentials?.length || 0} ({content.credentials?.filter((c: any) => !c.published).length || 0} Private Drafts)
-                </span>
+                <button
+                  onClick={() => {
+                    const newCred: Credential = {
+                      id: `cred-${Date.now()}`,
+                      title: "New Credential",
+                      issuer: "AWS / Google Cloud / Cisco",
+                      type: "Course/Badge",
+                      category: "course-module",
+                      date: "2026",
+                      summary: "Core competencies demonstrated.",
+                      featured: true,
+                      published: true,
+                      order: content.credentials.length + 1,
+                      isJourney: false,
+                      verificationUrl: "",
+                      linkedInPostUrl: "",
+                      evidenceLink: ""
+                    };
+                    setContent({ ...content, credentials: [...content.credentials, newCred] });
+                  }}
+                  className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-[#590B20] text-white text-xs font-medium hover:bg-[#430717] cursor-pointer self-start sm:self-auto shadow-xs"
+                >
+                  <Plus className="w-3.5 h-3.5" />
+                  <span>Add Credential</span>
+                </button>
               </div>
 
               <div className="space-y-4">
-                {content.credentials?.map((cred: any) => (
-                  <div key={cred.id} className="p-6 bg-white rounded-xl border border-[#D9CCB8] shadow-xs space-y-4">
+                {content.credentials.map((cred, idx) => (
+                  <div key={cred.id} className="p-6 bg-white rounded-xl border border-[#D9CCB8] space-y-4">
                     <div className="flex items-center justify-between pb-3 border-b border-[#E8DFD1]">
-                      <div>
-                        <div className="flex items-center gap-2">
-                          <span className="font-display text-base text-[#20060B]">{cred.title}</span>
-                          <span className="text-[10px] uppercase font-semibold px-2 py-0.5 rounded bg-[#FAF8F3] text-[#590B20] border border-[#D9CCB8]">
-                            {cred.type}
-                          </span>
-                        </div>
-                        <span className="text-xs text-[#68626B]">
-                          Issuer: {cred.issuer} {cred.date ? `· ${cred.date}` : ""} {cred.credentialId ? `· ID: ${cred.credentialId}` : ""}
+                      <div className="flex items-center gap-3">
+                        <span className="font-display text-base text-[#20060B] font-medium">{cred.title}</span>
+                        <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${cred.published ? "bg-emerald-100 text-emerald-800" : "bg-amber-100 text-amber-800"}`}>
+                          {cred.published ? "Published" : "Draft"}
                         </span>
+                        {cred.isJourney && (
+                          <span className="text-[10px] px-2 py-0.5 rounded-full bg-blue-50 text-blue-800">
+                            Journey Curriculum
+                          </span>
+                        )}
                       </div>
-                      
-                      <button
-                        type="button"
-                        onClick={() => {
-                          const updated = content.credentials.map((c: any) =>
-                            c.id === cred.id ? { ...c, published: !c.published } : c
-                          );
-                          setContent({ ...content, credentials: updated });
-                        }}
-                        className={`text-xs px-2.5 py-1 rounded border cursor-pointer font-medium ${
-                          cred.published
-                            ? "bg-emerald-50 text-emerald-800 border-emerald-200"
-                            : "bg-amber-50 text-amber-800 border-amber-200"
-                        }`}
-                      >
-                        {cred.published ? "Published (Visible)" : "Private Draft (Hidden)"}
-                      </button>
+                      <div className="flex items-center gap-2">
+                        <button
+                          disabled={idx === 0}
+                          onClick={() => {
+                            if (idx === 0) return;
+                            const copy = [...content.credentials];
+                            const tmp = copy[idx - 1];
+                            copy[idx - 1] = copy[idx];
+                            copy[idx] = tmp;
+                            copy.forEach((c, i) => (c.order = i + 1));
+                            setContent({ ...content, credentials: copy });
+                          }}
+                          className="p-1 border border-[#D9CCB8] rounded text-[#68626B] hover:text-[#20060B] disabled:opacity-30 cursor-pointer"
+                        >
+                          <ChevronUp className="w-3.5 h-3.5" />
+                        </button>
+                        <button
+                          disabled={idx === content.credentials.length - 1}
+                          onClick={() => {
+                            if (idx === content.credentials.length - 1) return;
+                            const copy = [...content.credentials];
+                            const tmp = copy[idx + 1];
+                            copy[idx + 1] = copy[idx];
+                            copy[idx] = tmp;
+                            copy.forEach((c, i) => (c.order = i + 1));
+                            setContent({ ...content, credentials: copy });
+                          }}
+                          className="p-1 border border-[#D9CCB8] rounded text-[#68626B] hover:text-[#20060B] disabled:opacity-30 cursor-pointer"
+                        >
+                          <ChevronDown className="w-3.5 h-3.5" />
+                        </button>
+                        <button
+                          onClick={() => {
+                            const updated = content.credentials.map((c) =>
+                              c.id === cred.id ? { ...c, published: !c.published } : c
+                            );
+                            setContent({ ...content, credentials: updated });
+                          }}
+                          className={`text-xs px-2.5 py-1 rounded border font-medium cursor-pointer ${
+                            cred.published ? "border-emerald-300 text-emerald-800" : "border-amber-300 text-amber-800"
+                          }`}
+                        >
+                          {cred.published ? "Draft" : "Publish"}
+                        </button>
+                        <button
+                          onClick={() => setDeleteTarget({ type: "credential", id: cred.id, name: cred.title })}
+                          className="p-1.5 text-red-600 hover:bg-red-50 rounded cursor-pointer"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
                     </div>
 
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 text-xs">
                       <div>
-                        <label className="block text-[#68626B] mb-1 font-medium">Credential Title</label>
+                        <label className="block text-[#68626B] mb-1">Title</label>
                         <input
                           type="text"
-                          value={cred.title || ""}
+                          value={cred.title}
                           onChange={(e) => {
-                            const updated = content.credentials.map((c: any) =>
+                            const updated = content.credentials.map((c) =>
                               c.id === cred.id ? { ...c, title: e.target.value } : c
                             );
                             setContent({ ...content, credentials: updated });
                           }}
-                          className="w-full bg-[#FAF8F3] border border-[#D9CCB8] rounded px-3 py-1.5 text-[#20060B]"
+                          className="w-full px-3 py-1.5 rounded border border-[#D9CCB8] bg-[#FAF8F3]"
                         />
                       </div>
-
                       <div>
-                        <label className="block text-[#68626B] mb-1 font-medium">Issuer Organisation</label>
+                        <label className="block text-[#68626B] mb-1">Issuer</label>
                         <input
                           type="text"
-                          value={cred.issuer || ""}
+                          value={cred.issuer}
                           onChange={(e) => {
-                            const updated = content.credentials.map((c: any) =>
+                            const updated = content.credentials.map((c) =>
                               c.id === cred.id ? { ...c, issuer: e.target.value } : c
                             );
                             setContent({ ...content, credentials: updated });
                           }}
-                          className="w-full bg-[#FAF8F3] border border-[#D9CCB8] rounded px-3 py-1.5 text-[#20060B]"
+                          className="w-full px-3 py-1.5 rounded border border-[#D9CCB8] bg-[#FAF8F3]"
                         />
                       </div>
-
                       <div>
-                        <label className="block text-[#68626B] mb-1 font-medium">Completion Date</label>
+                        <label className="block text-[#68626B] mb-1">Date</label>
                         <input
                           type="text"
-                          placeholder="e.g. August 2, 2025 (leave blank if unavailable)"
                           value={cred.date || ""}
                           onChange={(e) => {
-                            const updated = content.credentials.map((c: any) =>
+                            const updated = content.credentials.map((c) =>
                               c.id === cred.id ? { ...c, date: e.target.value } : c
                             );
                             setContent({ ...content, credentials: updated });
                           }}
-                          className="w-full bg-[#FAF8F3] border border-[#D9CCB8] rounded px-3 py-1.5 text-[#20060B]"
+                          className="w-full px-3 py-1.5 rounded border border-[#D9CCB8] bg-[#FAF8F3]"
                         />
                       </div>
 
                       <div>
-                        <label className="block text-[#68626B] mb-1 font-medium">Credential ID / UID</label>
-                        <input
-                          type="text"
-                          placeholder="e.g. 2ff35d08"
-                          value={cred.credentialId || ""}
-                          onChange={(e) => {
-                            const updated = content.credentials.map((c: any) =>
-                              c.id === cred.id ? { ...c, credentialId: e.target.value } : c
-                            );
-                            setContent({ ...content, credentials: updated });
-                          }}
-                          className="w-full bg-[#FAF8F3] border border-[#D9CCB8] rounded px-3 py-1.5 text-[#20060B]"
-                        />
-                      </div>
-
-                      <div className="sm:col-span-2">
-                        <label className="block text-[#68626B] mb-1 font-medium">Learning Summary</label>
-                        <textarea
-                          rows={2}
-                          value={cred.summary || ""}
-                          onChange={(e) => {
-                            const updated = content.credentials.map((c: any) =>
-                              c.id === cred.id ? { ...c, summary: e.target.value } : c
-                            );
-                            setContent({ ...content, credentials: updated });
-                          }}
-                          className="w-full bg-[#FAF8F3] border border-[#D9CCB8] rounded px-3 py-1.5 text-[#20060B] resize-none"
-                        />
-                      </div>
-
-                      <div>
-                        <label className="block text-[#68626B] mb-1 font-medium">Exact Verification Link</label>
+                        <label className="block text-[#68626B] mb-1">Verification / Badge URL</label>
                         <input
                           type="url"
-                          placeholder="Exact individual verification URL only"
+                          placeholder="https://credly.com/..."
                           value={cred.verificationUrl || ""}
                           onChange={(e) => {
-                            const updated = content.credentials.map((c: any) =>
+                            const updated = content.credentials.map((c) =>
                               c.id === cred.id ? { ...c, verificationUrl: e.target.value } : c
                             );
                             setContent({ ...content, credentials: updated });
                           }}
-                          className="w-full bg-[#FAF8F3] border border-[#D9CCB8] rounded px-3 py-1.5 text-[#20060B]"
+                          className="w-full px-3 py-1.5 rounded border border-[#D9CCB8] bg-[#FAF8F3]"
                         />
                       </div>
 
                       <div>
-                        <label className="block text-[#68626B] mb-1 font-medium">LinkedIn Post Link</label>
+                        <label className="block text-[#68626B] mb-1">LinkedIn Post URL</label>
                         <input
                           type="url"
-                          placeholder="Exact post URL only"
+                          placeholder="https://linkedin.com/posts/..."
                           value={cred.linkedInPostUrl || ""}
                           onChange={(e) => {
-                            const updated = content.credentials.map((c: any) =>
+                            const updated = content.credentials.map((c) =>
                               c.id === cred.id ? { ...c, linkedInPostUrl: e.target.value } : c
                             );
                             setContent({ ...content, credentials: updated });
                           }}
-                          className="w-full bg-[#FAF8F3] border border-[#D9CCB8] rounded px-3 py-1.5 text-[#20060B]"
+                          className="w-full px-3 py-1.5 rounded border border-[#D9CCB8] bg-[#FAF8F3]"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-[#68626B] mb-1">Evidence / Certificate Image Link</label>
+                        <input
+                          type="text"
+                          placeholder="/assets/credentials/... or https://"
+                          value={cred.evidenceLink || ""}
+                          onChange={(e) => {
+                            const updated = content.credentials.map((c) =>
+                              c.id === cred.id ? { ...c, evidenceLink: e.target.value } : c
+                            );
+                            setContent({ ...content, credentials: updated });
+                          }}
+                          className="w-full px-3 py-1.5 rounded border border-[#D9CCB8] bg-[#FAF8F3]"
+                        />
+                      </div>
+
+                      <div className="md:col-span-2 lg:col-span-3">
+                        <label className="block text-[#68626B] mb-1">Summary</label>
+                        <textarea
+                          rows={2}
+                          value={cred.summary}
+                          onChange={(e) => {
+                            const updated = content.credentials.map((c) =>
+                              c.id === cred.id ? { ...c, summary: e.target.value } : c
+                            );
+                            setContent({ ...content, credentials: updated });
+                          }}
+                          className="w-full px-3 py-1.5 rounded border border-[#D9CCB8] bg-[#FAF8F3]"
                         />
                       </div>
                     </div>
@@ -647,119 +1240,749 @@ export default function StudioPage() {
           </div>
         )}
 
-        {/* SKILLS TAB */}
+        {/* ========================================================= */}
+        {/* TAB 3: SKILLS */}
+        {/* ========================================================= */}
         {activeTab === "skills" && (
           <div className="space-y-6">
-            <h2 className="font-display text-2xl text-[#20060B]">Technical Competencies</h2>
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-              {content.skills.map((skill: any) => (
-                <div key={skill.id} className="p-4 bg-white rounded-xl border border-[#D9CCB8]">
-                  <div className="flex items-center justify-between mb-1">
-                    <span className="text-[10px] uppercase font-semibold text-[#AC9062]">{skill.category}</span>
-                    <span className="text-[10px] px-2 py-0.5 rounded bg-[#FAF8F3] text-[#20060B] border border-[#D9CCB8]">
-                      {skill.proficiency}
-                    </span>
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div>
+                <h2 className="font-display text-2xl text-[#20060B]">Technical Skills</h2>
+                <p className="text-xs text-[#68626B]">
+                  Organize competencies, categorizations, proficiency levels, and linked project tags.
+                </p>
+              </div>
+              <button
+                onClick={() => {
+                  const newSkill: Skill = {
+                    id: `skill-${Date.now()}`,
+                    name: "New Skill",
+                    category: "Development",
+                    proficiency: "Core",
+                    relatedProjectSlugs: []
+                  };
+                  setContent({ ...content, skills: [...content.skills, newSkill] });
+                }}
+                className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-[#590B20] text-white text-xs font-medium hover:bg-[#430717] cursor-pointer self-start sm:self-auto shadow-xs"
+              >
+                <Plus className="w-3.5 h-3.5" />
+                <span>Add Skill</span>
+              </button>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {content.skills.map((skill) => (
+                <div key={skill.id} className="p-4 bg-white rounded-xl border border-[#D9CCB8] space-y-3">
+                  <div className="flex items-center justify-between">
+                    <span className="font-semibold text-sm text-[#20060B]">{skill.name || "Unnamed"}</span>
+                    <button
+                      onClick={() => setDeleteTarget({ type: "skill", id: skill.id, name: skill.name })}
+                      className="p-1 text-red-600 hover:bg-red-50 rounded cursor-pointer"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
                   </div>
-                  <h4 className="font-medium text-sm text-[#20060B]">{skill.name}</h4>
+                  <div className="grid grid-cols-2 gap-3 text-xs">
+                    <div>
+                      <label className="block text-[#68626B] mb-1">Skill Name</label>
+                      <input
+                        type="text"
+                        value={skill.name}
+                        onChange={(e) => {
+                          const updated = content.skills.map((s) =>
+                            s.id === skill.id ? { ...s, name: e.target.value } : s
+                          );
+                          setContent({ ...content, skills: updated });
+                        }}
+                        className="w-full px-2.5 py-1.5 rounded border border-[#D9CCB8] bg-[#FAF8F3]"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[#68626B] mb-1">Category</label>
+                      <select
+                        value={skill.category}
+                        onChange={(e) => {
+                          const updated = content.skills.map((s) =>
+                            s.id === skill.id ? { ...s, category: e.target.value as Skill["category"] } : s
+                          );
+                          setContent({ ...content, skills: updated });
+                        }}
+                        className="w-full px-2.5 py-1.5 rounded border border-[#D9CCB8] bg-[#FAF8F3]"
+                      >
+                        <option value="Development">Development</option>
+                        <option value="Design & Prototyping">Design & Prototyping</option>
+                        <option value="Programming Foundations">Programming Foundations</option>
+                        <option value="Tools & Workflow">Tools & Workflow</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-[#68626B] mb-1">Proficiency</label>
+                      <select
+                        value={skill.proficiency}
+                        onChange={(e) => {
+                          const updated = content.skills.map((s) =>
+                            s.id === skill.id ? { ...s, proficiency: e.target.value as Skill["proficiency"] } : s
+                          );
+                          setContent({ ...content, skills: updated });
+                        }}
+                        className="w-full px-2.5 py-1.5 rounded border border-[#D9CCB8] bg-[#FAF8F3]"
+                      >
+                        <option value="Core">Core</option>
+                        <option value="Proficient">Proficient</option>
+                        <option value="Learning">Learning</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-[#68626B] mb-1">Linked Projects (slugs)</label>
+                      <input
+                        type="text"
+                        placeholder="nec-portal, aegis-legacy"
+                        value={skill.relatedProjectSlugs.join(", ")}
+                        onChange={(e) => {
+                          const slugs = e.target.value.split(",").map((s) => s.trim()).filter(Boolean);
+                          const updated = content.skills.map((s) =>
+                            s.id === skill.id ? { ...s, relatedProjectSlugs: slugs } : s
+                          );
+                          setContent({ ...content, skills: updated });
+                        }}
+                        className="w-full px-2.5 py-1.5 rounded border border-[#D9CCB8] bg-[#FAF8F3]"
+                      />
+                    </div>
+                  </div>
                 </div>
               ))}
             </div>
           </div>
         )}
 
-        {/* LEARNING TAB */}
+        {/* ========================================================= */}
+        {/* TAB 4: EXPERIENCE */}
+        {/* ========================================================= */}
+        {activeTab === "experience" && (
+          <div className="space-y-6">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div>
+                <h2 className="font-display text-2xl text-[#20060B]">Leadership & Experience</h2>
+                <p className="text-xs text-[#68626B]">
+                  Manage executive positions, startup leadership, operational roles, and verified responsibilities.
+                </p>
+              </div>
+              <button
+                onClick={() => {
+                  const newExp: Experience = {
+                    id: `exp-${Date.now()}`,
+                    role: "Chief Operating Officer (COO)",
+                    company: "CodeXa Agency",
+                    cooDistinction: "Operations & Frontend Delivery",
+                    period: "2025–Present",
+                    isCurrent: true,
+                    summary: "Leading operational execution and digital interface delivery.",
+                    contributions: [
+                      "Led cross-functional client delivery sprints.",
+                      "Architected accessible design system foundations."
+                    ],
+                    published: true
+                  };
+                  setContent({ ...content, experience: [...content.experience, newExp] });
+                }}
+                className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-[#590B20] text-white text-xs font-medium hover:bg-[#430717] cursor-pointer self-start sm:self-auto shadow-xs"
+              >
+                <Plus className="w-3.5 h-3.5" />
+                <span>Add Experience Entry</span>
+              </button>
+            </div>
+
+            <div className="space-y-6">
+              {content.experience.map((exp) => (
+                <div key={exp.id} className="p-6 bg-white rounded-xl border border-[#D9CCB8] space-y-4">
+                  <div className="flex items-center justify-between pb-3 border-b border-[#E8DFD1]">
+                    <div className="flex items-center gap-3">
+                      <span className="font-display text-base text-[#20060B] font-medium">
+                        {exp.role} at {exp.company}
+                      </span>
+                      <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${exp.published ? "bg-emerald-100 text-emerald-800" : "bg-amber-100 text-amber-800"}`}>
+                        {exp.published ? "Published" : "Draft"}
+                      </span>
+                      {exp.isCurrent && (
+                        <span className="text-[10px] px-2 py-0.5 rounded-full bg-[#AC9062]/20 text-[#20060B] font-medium">
+                          Current Role
+                        </span>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => {
+                          const updated = content.experience.map((e) =>
+                            e.id === exp.id ? { ...e, published: !e.published } : e
+                          );
+                          setContent({ ...content, experience: updated });
+                        }}
+                        className={`text-xs px-2.5 py-1 rounded border font-medium cursor-pointer ${
+                          exp.published ? "border-emerald-300 text-emerald-800" : "border-amber-300 text-amber-800"
+                        }`}
+                      >
+                        {exp.published ? "Draft" : "Publish"}
+                      </button>
+                      <button
+                        onClick={() => setDeleteTarget({ type: "experience", id: exp.id, name: `${exp.role} (${exp.company})` })}
+                        className="p-1.5 text-red-600 hover:bg-red-50 rounded cursor-pointer"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 text-xs">
+                    <div>
+                      <label className="block text-[#68626B] mb-1">Role Title</label>
+                      <input
+                        type="text"
+                        value={exp.role}
+                        onChange={(e) => {
+                          const updated = content.experience.map((ex) =>
+                            ex.id === exp.id ? { ...ex, role: e.target.value } : ex
+                          );
+                          setContent({ ...content, experience: updated });
+                        }}
+                        className="w-full px-3 py-1.5 rounded border border-[#D9CCB8] bg-[#FAF8F3]"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[#68626B] mb-1">Company / Organization</label>
+                      <input
+                        type="text"
+                        value={exp.company}
+                        onChange={(e) => {
+                          const updated = content.experience.map((ex) =>
+                            ex.id === exp.id ? { ...ex, company: e.target.value } : ex
+                          );
+                          setContent({ ...content, experience: updated });
+                        }}
+                        className="w-full px-3 py-1.5 rounded border border-[#D9CCB8] bg-[#FAF8F3]"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[#68626B] mb-1">Distinction / Focus</label>
+                      <input
+                        type="text"
+                        value={exp.cooDistinction}
+                        onChange={(e) => {
+                          const updated = content.experience.map((ex) =>
+                            ex.id === exp.id ? { ...ex, cooDistinction: e.target.value } : ex
+                          );
+                          setContent({ ...content, experience: updated });
+                        }}
+                        className="w-full px-3 py-1.5 rounded border border-[#D9CCB8] bg-[#FAF8F3]"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[#68626B] mb-1">Period (e.g. 2025–Present)</label>
+                      <input
+                        type="text"
+                        value={exp.period}
+                        onChange={(e) => {
+                          const updated = content.experience.map((ex) =>
+                            ex.id === exp.id ? { ...ex, period: e.target.value } : ex
+                          );
+                          setContent({ ...content, experience: updated });
+                        }}
+                        className="w-full px-3 py-1.5 rounded border border-[#D9CCB8] bg-[#FAF8F3]"
+                      />
+                    </div>
+                    <div className="flex items-center gap-2 pt-5">
+                      <label className="flex items-center gap-2 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={exp.isCurrent}
+                          onChange={(e) => {
+                            const updated = content.experience.map((ex) =>
+                              ex.id === exp.id ? { ...ex, isCurrent: e.target.checked } : ex
+                            );
+                            setContent({ ...content, experience: updated });
+                          }}
+                          className="rounded border-[#D9CCB8] text-[#590B20]"
+                        />
+                        <span className="font-medium text-[#20060B]">Currently Active</span>
+                      </label>
+                    </div>
+                    <div className="md:col-span-2 lg:col-span-3">
+                      <label className="block text-[#68626B] mb-1">Role Summary</label>
+                      <input
+                        type="text"
+                        value={exp.summary}
+                        onChange={(e) => {
+                          const updated = content.experience.map((ex) =>
+                            ex.id === exp.id ? { ...ex, summary: e.target.value } : ex
+                          );
+                          setContent({ ...content, experience: updated });
+                        }}
+                        className="w-full px-3 py-1.5 rounded border border-[#D9CCB8] bg-[#FAF8F3]"
+                      />
+                    </div>
+                    <div className="md:col-span-2 lg:col-span-3">
+                      <label className="block text-[#68626B] mb-1">Key Responsibilities & Contributions (one per line)</label>
+                      <textarea
+                        rows={3}
+                        value={exp.contributions.join("\n")}
+                        onChange={(e) => {
+                          const lines = e.target.value.split("\n").map((l) => l.trim()).filter(Boolean);
+                          const updated = content.experience.map((ex) =>
+                            ex.id === exp.id ? { ...ex, contributions: lines } : ex
+                          );
+                          setContent({ ...content, experience: updated });
+                        }}
+                        className="w-full px-3 py-1.5 rounded border border-[#D9CCB8] bg-[#FAF8F3]"
+                      />
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* ========================================================= */}
+        {/* TAB 5: CURRENTLY LEARNING */}
+        {/* ========================================================= */}
         {activeTab === "learning" && (
           <div className="space-y-6">
-            <h2 className="font-display text-2xl text-[#20060B]">Active Learning Curriculum</h2>
-            <div className="space-y-3">
-              {content.currentlyLearning.map((item: any) => (
-                <div key={item.id} className="p-4 bg-white rounded-xl border border-[#D9CCB8]">
-                  <div className="flex items-center justify-between mb-1 text-xs">
-                    <span className="font-semibold text-[#590B20]">{item.area}</span>
-                    <span className="text-[#68626B]">{item.dated}</span>
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div>
+                <h2 className="font-display text-2xl text-[#20060B]">Currently Learning</h2>
+                <p className="text-xs text-[#68626B]">
+                  Highlight active exploration areas, modern software frameworks, and technical goals.
+                </p>
+              </div>
+              <button
+                onClick={() => {
+                  const newItem: CurrentlyLearningItem = {
+                    id: `learn-${Date.now()}`,
+                    topic: "New Technology or Paradigm",
+                    area: "Frontend Architecture",
+                    dated: "Active Exploration",
+                    notes: "Key focus points and practical experiments.",
+                    published: true
+                  };
+                  setContent({ ...content, currentlyLearning: [...content.currentlyLearning, newItem] });
+                }}
+                className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-[#590B20] text-white text-xs font-medium hover:bg-[#430717] cursor-pointer self-start sm:self-auto shadow-xs"
+              >
+                <Plus className="w-3.5 h-3.5" />
+                <span>Add Learning Focus</span>
+              </button>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {content.currentlyLearning.map((item) => (
+                <div key={item.id} className="p-4 bg-white rounded-xl border border-[#D9CCB8] space-y-3">
+                  <div className="flex items-center justify-between pb-2 border-b border-[#E8DFD1]">
+                    <div className="flex items-center gap-2">
+                      <span className="font-semibold text-sm text-[#20060B]">{item.topic || "Untitled"}</span>
+                      <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${item.published ? "bg-emerald-100 text-emerald-800" : "bg-amber-100 text-amber-800"}`}>
+                        {item.published ? "Published" : "Draft"}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => {
+                          const updated = content.currentlyLearning.map((l) =>
+                            l.id === item.id ? { ...l, published: !l.published } : l
+                          );
+                          setContent({ ...content, currentlyLearning: updated });
+                        }}
+                        className={`text-xs px-2 py-0.5 rounded border font-medium cursor-pointer ${
+                          item.published ? "border-emerald-300 text-emerald-800" : "border-amber-300 text-amber-800"
+                        }`}
+                      >
+                        {item.published ? "Draft" : "Publish"}
+                      </button>
+                      <button
+                        onClick={() => setDeleteTarget({ type: "learning", id: item.id, name: item.topic })}
+                        className="p-1 text-red-600 hover:bg-red-50 rounded cursor-pointer"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
                   </div>
-                  <h4 className="font-display text-base text-[#20060B]">{item.topic}</h4>
-                  <p className="text-xs text-[#68626B] mt-1">{item.notes}</p>
+
+                  <div className="space-y-3 text-xs">
+                    <div>
+                      <label className="block text-[#68626B] mb-1">Topic</label>
+                      <input
+                        type="text"
+                        value={item.topic}
+                        onChange={(e) => {
+                          const updated = content.currentlyLearning.map((l) =>
+                            l.id === item.id ? { ...l, topic: e.target.value } : l
+                          );
+                          setContent({ ...content, currentlyLearning: updated });
+                        }}
+                        className="w-full px-2.5 py-1.5 rounded border border-[#D9CCB8] bg-[#FAF8F3]"
+                      />
+                    </div>
+                    <div className="grid grid-cols-2 gap-2">
+                      <div>
+                        <label className="block text-[#68626B] mb-1">Area / Domain</label>
+                        <input
+                          type="text"
+                          value={item.area}
+                          onChange={(e) => {
+                            const updated = content.currentlyLearning.map((l) =>
+                              l.id === item.id ? { ...l, area: e.target.value } : l
+                            );
+                            setContent({ ...content, currentlyLearning: updated });
+                          }}
+                          className="w-full px-2.5 py-1.5 rounded border border-[#D9CCB8] bg-[#FAF8F3]"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-[#68626B] mb-1">Date / Status</label>
+                        <input
+                          type="text"
+                          value={item.dated}
+                          onChange={(e) => {
+                            const updated = content.currentlyLearning.map((l) =>
+                              l.id === item.id ? { ...l, dated: e.target.value } : l
+                            );
+                            setContent({ ...content, currentlyLearning: updated });
+                          }}
+                          className="w-full px-2.5 py-1.5 rounded border border-[#D9CCB8] bg-[#FAF8F3]"
+                        />
+                      </div>
+                    </div>
+                    <div>
+                      <label className="block text-[#68626B] mb-1">Notes</label>
+                      <textarea
+                        rows={2}
+                        value={item.notes}
+                        onChange={(e) => {
+                          const updated = content.currentlyLearning.map((l) =>
+                            l.id === item.id ? { ...l, notes: e.target.value } : l
+                          );
+                          setContent({ ...content, currentlyLearning: updated });
+                        }}
+                        className="w-full px-2.5 py-1.5 rounded border border-[#D9CCB8] bg-[#FAF8F3]"
+                      />
+                    </div>
+                  </div>
                 </div>
               ))}
             </div>
           </div>
         )}
 
-        {/* PROFILE TAB */}
+        {/* ========================================================= */}
+        {/* TAB 6: PROFILE & IDENTITY */}
+        {/* ========================================================= */}
         {activeTab === "profile" && (
-          <div className="p-8 bg-white rounded-xl border border-[#D9CCB8] space-y-6 max-w-2xl">
-            <h2 className="font-display text-2xl text-[#20060B]">Profile Identity &amp; Roles</h2>
-            
-            <div className="space-y-4 text-xs">
-              <div>
-                <label className="block text-[#68626B] mb-1 font-medium">Display Name</label>
-                <input
-                  type="text"
-                  value={content.profile.name}
-                  onChange={(e) => setContent({ ...content, profile: { ...content.profile, name: e.target.value } })}
-                  className="w-full bg-[#FAF8F3] border border-[#D9CCB8] rounded px-3 py-2 text-[#20060B]"
-                />
+          <div className="space-y-6">
+            <div>
+              <h2 className="font-display text-2xl text-[#20060B]">Profile & Identity</h2>
+              <p className="text-xs text-[#68626B]">
+                Configure candidate name, introductory copy, biography, academic credentials, and approved contact links.
+              </p>
+            </div>
+
+            <div className="p-6 bg-white rounded-xl border border-[#D9CCB8] space-y-6 text-xs">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-[#68626B] font-medium mb-1">Full Legal / Display Name</label>
+                  <input
+                    type="text"
+                    value={content.profile.name}
+                    onChange={(e) =>
+                      setContent({
+                        ...content,
+                        profile: { ...content.profile, name: e.target.value }
+                      })
+                    }
+                    className="w-full px-3 py-1.5 rounded border border-[#D9CCB8] bg-[#FAF8F3] text-[#20060B]"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[#68626B] font-medium mb-1">Preferred Name</label>
+                  <input
+                    type="text"
+                    value={content.profile.preferredName}
+                    onChange={(e) =>
+                      setContent({
+                        ...content,
+                        profile: { ...content.profile, preferredName: e.target.value }
+                      })
+                    }
+                    className="w-full px-3 py-1.5 rounded border border-[#D9CCB8] bg-[#FAF8F3] text-[#20060B]"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[#68626B] font-medium mb-1">Primary Role Headline</label>
+                  <input
+                    type="text"
+                    value={content.profile.primaryRole}
+                    onChange={(e) =>
+                      setContent({
+                        ...content,
+                        profile: { ...content.profile, primaryRole: e.target.value }
+                      })
+                    }
+                    className="w-full px-3 py-1.5 rounded border border-[#D9CCB8] bg-[#FAF8F3] text-[#20060B]"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[#68626B] font-medium mb-1">Supporting Role</label>
+                  <input
+                    type="text"
+                    value={content.profile.supportingRole}
+                    onChange={(e) =>
+                      setContent({
+                        ...content,
+                        profile: { ...content.profile, supportingRole: e.target.value }
+                      })
+                    }
+                    className="w-full px-3 py-1.5 rounded border border-[#D9CCB8] bg-[#FAF8F3] text-[#20060B]"
+                  />
+                </div>
+                <div className="md:col-span-2">
+                  <label className="block text-[#68626B] font-medium mb-1">Location</label>
+                  <input
+                    type="text"
+                    value={content.profile.location}
+                    onChange={(e) =>
+                      setContent({
+                        ...content,
+                        profile: { ...content.profile, location: e.target.value }
+                      })
+                    }
+                    className="w-full px-3 py-1.5 rounded border border-[#D9CCB8] bg-[#FAF8F3] text-[#20060B]"
+                  />
+                </div>
+                <div className="md:col-span-2">
+                  <label className="block text-[#68626B] font-medium mb-1">Editorial Introduction</label>
+                  <textarea
+                    rows={2}
+                    value={content.profile.introduction}
+                    onChange={(e) =>
+                      setContent({
+                        ...content,
+                        profile: { ...content.profile, introduction: e.target.value }
+                      })
+                    }
+                    className="w-full px-3 py-1.5 rounded border border-[#D9CCB8] bg-[#FAF8F3] text-[#20060B]"
+                  />
+                </div>
               </div>
 
-              <div>
-                <label className="block text-[#68626B] mb-1 font-medium">Primary Role</label>
-                <input
-                  type="text"
-                  value={content.profile.primaryRole}
-                  onChange={(e) => setContent({ ...content, profile: { ...content.profile, primaryRole: e.target.value } })}
-                  className="w-full bg-[#FAF8F3] border border-[#D9CCB8] rounded px-3 py-2 text-[#20060B]"
-                />
-              </div>
-
-              <div>
-                <label className="block text-[#68626B] mb-1 font-medium">Supporting Role</label>
-                <input
-                  type="text"
-                  value={content.profile.supportingRole}
-                  onChange={(e) => setContent({ ...content, profile: { ...content.profile, supportingRole: e.target.value } })}
-                  className="w-full bg-[#FAF8F3] border border-[#D9CCB8] rounded px-3 py-2 text-[#20060B]"
-                />
-              </div>
-
-              <div>
-                <label className="block text-[#68626B] mb-1 font-medium">Introduction Copy</label>
+              {/* Bio Paragraphs */}
+              <div className="pt-4 border-t border-[#E8DFD1]">
+                <label className="block text-[#68626B] font-medium mb-1">About Biography Paragraphs (one per line)</label>
                 <textarea
-                  rows={3}
-                  value={content.profile.introduction}
-                  onChange={(e) => setContent({ ...content, profile: { ...content.profile, introduction: e.target.value } })}
-                  className="w-full bg-[#FAF8F3] border border-[#D9CCB8] rounded px-3 py-2 text-[#20060B] resize-none"
-                />
-              </div>
-
-              <div className="p-4 bg-[#FAF8F3] rounded-lg border border-[#D9CCB8]">
-                <span className="font-semibold text-[#590B20] block mb-1">Résumé Download Visibility</span>
-                <p className="text-[#68626B] mb-3">
-                  Status: {content.profile.contact.hasResume ? "Enabled" : "Disabled (Hidden until authentic résumé is uploaded)"}
-                </p>
-                <button
-                  type="button"
-                  onClick={() =>
+                  rows={4}
+                  value={content.profile.aboutBio.join("\n\n")}
+                  onChange={(e) => {
+                    const paragraphs = e.target.value.split("\n\n").map((p) => p.trim()).filter(Boolean);
                     setContent({
                       ...content,
-                      profile: {
-                        ...content.profile,
-                        contact: {
-                          ...content.profile.contact,
-                          hasResume: !content.profile.contact.hasResume
-                        }
+                      profile: { ...content.profile, aboutBio: paragraphs }
+                    });
+                  }}
+                  className="w-full px-3 py-2 rounded border border-[#D9CCB8] bg-[#FAF8F3] text-[#20060B]"
+                />
+              </div>
+
+              {/* Education */}
+              <div className="pt-4 border-t border-[#E8DFD1] space-y-4">
+                <span className="font-semibold text-sm text-[#20060B] block">Academic Education</span>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-[#68626B] mb-1">Degree</label>
+                    <input
+                      type="text"
+                      value={content.profile.education.degree}
+                      onChange={(e) =>
+                        setContent({
+                          ...content,
+                          profile: {
+                            ...content.profile,
+                            education: { ...content.profile.education, degree: e.target.value }
+                          }
+                        })
                       }
-                    })
-                  }
-                  className="px-3 py-1.5 rounded bg-white border border-[#D9CCB8] text-xs font-medium text-[#20060B] hover:bg-[#F7F4EE] cursor-pointer"
-                >
-                  Toggle Résumé Button Visibility
-                </button>
+                      className="w-full px-3 py-1.5 rounded border border-[#D9CCB8] bg-[#FAF8F3]"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[#68626B] mb-1">Field</label>
+                    <input
+                      type="text"
+                      value={content.profile.education.field}
+                      onChange={(e) =>
+                        setContent({
+                          ...content,
+                          profile: {
+                            ...content.profile,
+                            education: { ...content.profile.education, field: e.target.value }
+                          }
+                        })
+                      }
+                      className="w-full px-3 py-1.5 rounded border border-[#D9CCB8] bg-[#FAF8F3]"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[#68626B] mb-1">Institution</label>
+                    <input
+                      type="text"
+                      value={content.profile.education.institution}
+                      onChange={(e) =>
+                        setContent({
+                          ...content,
+                          profile: {
+                            ...content.profile,
+                            education: { ...content.profile.education, institution: e.target.value }
+                          }
+                        })
+                      }
+                      className="w-full px-3 py-1.5 rounded border border-[#D9CCB8] bg-[#FAF8F3]"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[#68626B] mb-1">Period</label>
+                    <input
+                      type="text"
+                      value={content.profile.education.period}
+                      onChange={(e) =>
+                        setContent({
+                          ...content,
+                          profile: {
+                            ...content.profile,
+                            education: { ...content.profile.education, period: e.target.value }
+                          }
+                        })
+                      }
+                      className="w-full px-3 py-1.5 rounded border border-[#D9CCB8] bg-[#FAF8F3]"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Contact Channels */}
+              <div className="pt-4 border-t border-[#E8DFD1] space-y-4">
+                <span className="font-semibold text-sm text-[#20060B] block">Contact Channels & Availability</span>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-[#68626B] mb-1">Public Contact Email</label>
+                    <input
+                      type="email"
+                      value={content.profile.contact.email}
+                      onChange={(e) =>
+                        setContent({
+                          ...content,
+                          profile: {
+                            ...content.profile,
+                            contact: { ...content.profile.contact, email: e.target.value }
+                          }
+                        })
+                      }
+                      className="w-full px-3 py-1.5 rounded border border-[#D9CCB8] bg-[#FAF8F3]"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[#68626B] mb-1">GitHub Profile URL</label>
+                    <input
+                      type="url"
+                      value={content.profile.contact.github}
+                      onChange={(e) =>
+                        setContent({
+                          ...content,
+                          profile: {
+                            ...content.profile,
+                            contact: { ...content.profile.contact, github: e.target.value }
+                          }
+                        })
+                      }
+                      className="w-full px-3 py-1.5 rounded border border-[#D9CCB8] bg-[#FAF8F3]"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[#68626B] mb-1">LinkedIn Profile URL</label>
+                    <input
+                      type="url"
+                      value={content.profile.contact.linkedin}
+                      onChange={(e) =>
+                        setContent({
+                          ...content,
+                          profile: {
+                            ...content.profile,
+                            contact: { ...content.profile.contact, linkedin: e.target.value }
+                          }
+                        })
+                      }
+                      className="w-full px-3 py-1.5 rounded border border-[#D9CCB8] bg-[#FAF8F3]"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[#68626B] mb-1">Availability Status</label>
+                    <input
+                      type="text"
+                      value={content.profile.contact.availabilityStatus}
+                      onChange={(e) =>
+                        setContent({
+                          ...content,
+                          profile: {
+                            ...content.profile,
+                            contact: { ...content.profile.contact, availabilityStatus: e.target.value }
+                          }
+                        })
+                      }
+                      className="w-full px-3 py-1.5 rounded border border-[#D9CCB8] bg-[#FAF8F3]"
+                    />
+                  </div>
+                </div>
               </div>
             </div>
           </div>
         )}
       </main>
+
+      {/* ========================================================= */}
+      {/* DELETE CONFIRMATION MODAL */}
+      {/* ========================================================= */}
+      {deleteTarget && (
+        <div className="fixed inset-0 z-50 bg-[#20060B]/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl border border-[#D9CCB8] max-w-md w-full p-6 shadow-xl space-y-4 font-sans">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2 text-red-600 font-semibold text-sm">
+                <AlertTriangle className="w-4 h-4" />
+                <span>Confirm Deletion</span>
+              </div>
+              <button
+                onClick={() => setDeleteTarget(null)}
+                className="p-1 text-[#68626B] hover:text-[#20060B] rounded cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <p className="text-xs text-[#68626B] leading-relaxed">
+              Are you sure you want to delete <strong className="text-[#20060B]">&ldquo;{deleteTarget.name}&rdquo;</strong>? 
+              This will remove the item from your portfolio store upon publishing.
+            </p>
+
+            <div className="flex items-center justify-end gap-3 pt-2">
+              <button
+                onClick={() => setDeleteTarget(null)}
+                className="px-4 py-2 rounded-lg border border-[#D9CCB8] text-xs font-medium text-[#68626B] hover:text-[#20060B] cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={executeDelete}
+                className="px-4 py-2 rounded-lg bg-red-600 hover:bg-red-700 text-white text-xs font-semibold cursor-pointer shadow-xs"
+              >
+                Delete Permanently
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
