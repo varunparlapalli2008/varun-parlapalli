@@ -43,6 +43,13 @@ export const metadata: Metadata = {
       follow: true,
     },
   },
+  icons: {
+    icon: [
+      { url: "/icon.svg", type: "image/svg+xml" },
+    ],
+    shortcut: "/icon.svg",
+    apple: "/icon.svg",
+  },
 };
 
 import { AssistantProvider } from "@/components/ai/AssistantContext";
