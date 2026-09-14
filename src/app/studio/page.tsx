@@ -44,7 +44,6 @@ export default function StudioPage() {
   const [sessionChecking, setSessionChecking] = useState(true);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [authenticatedEmail, setAuthenticatedEmail] = useState("");
-  const [loginEmail, setLoginEmail] = useState("");
   const [loginPassword, setLoginPassword] = useState("");
   const [authError, setAuthError] = useState("");
   const [isSubmittingLogin, setIsSubmittingLogin] = useState(false);
@@ -132,7 +131,6 @@ export default function StudioPage() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          email: loginEmail,
           password: loginPassword
         })
       });
@@ -141,7 +139,7 @@ export default function StudioPage() {
 
       if (res.ok && data.success) {
         setIsAuthenticated(true);
-        setAuthenticatedEmail(data.user.email);
+        setAuthenticatedEmail("varunparlapalli2008@gmail.com");
         setLoginPassword("");
         await fetchStudioData();
       } else {
@@ -278,30 +276,14 @@ export default function StudioPage() {
           <form onSubmit={handleLoginSubmit} className="space-y-4">
             <div>
               <label className="block text-xs font-medium text-[#20060B] mb-1.5 flex items-center gap-1.5">
-                <Mail className="w-3.5 h-3.5 text-[#AC9062]" />
-                <span>Owner Email</span>
-              </label>
-              <input
-                type="email"
-                required
-                autoComplete="email"
-                placeholder="varunparlapalli2008@gmail.com"
-                value={loginEmail}
-                onChange={(e) => setLoginEmail(e.target.value)}
-                className="w-full px-3.5 py-2.5 rounded-xl border border-[#D9CCB8] bg-[#FAF8F3] text-sm text-[#20060B] placeholder-[#68626B]/50 focus:outline-none focus:ring-2 focus:ring-[#590B20]"
-              />
-            </div>
-
-            <div>
-              <label className="block text-xs font-medium text-[#20060B] mb-1.5 flex items-center gap-1.5">
                 <Lock className="w-3.5 h-3.5 text-[#AC9062]" />
-                <span>Password</span>
+                <span>Studio Master Password</span>
               </label>
               <input
                 type="password"
                 required
                 autoComplete="current-password"
-                placeholder="••••••••"
+                placeholder="Enter STUDIO_ADMIN_PASSWORD"
                 value={loginPassword}
                 onChange={(e) => setLoginPassword(e.target.value)}
                 className="w-full px-3.5 py-2.5 rounded-xl border border-[#D9CCB8] bg-[#FAF8F3] text-sm text-[#20060B] placeholder-[#68626B]/50 focus:outline-none focus:ring-2 focus:ring-[#590B20]"

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { 
-  verifyAdminCredentials, 
+  verifyStudioPassword, 
   createSessionToken, 
   getSessionCookieOptions 
 } from "@/lib/studio-auth.server";
@@ -8,33 +8,29 @@ import {
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json().catch(() => ({}));
-    const { email, password } = body;
+    const { password } = body;
 
-    if (!email || !password || typeof email !== "string" || typeof password !== "string") {
+    if (!password || typeof password !== "string") {
       return NextResponse.json(
-        { error: "Email and password are required." },
+        { error: "Password is required." },
         { status: 400 }
       );
     }
 
-    const authResult = verifyAdminCredentials(email, password);
+    const authResult = verifyStudioPassword(password);
     if (!authResult.valid) {
       return NextResponse.json(
-        { error: authResult.error || "Incorrect email or password." },
+        { error: authResult.error || "Incorrect password." },
         { status: authResult.missingConfig ? 500 : 401 }
       );
     }
 
-    const cleanEmail = email.trim().toLowerCase();
-    const token = createSessionToken(cleanEmail);
+    const token = createSessionToken();
     const cookieOptions = getSessionCookieOptions();
 
     const response = NextResponse.json({
       success: true,
-      message: "Authentication successful.",
-      user: {
-        email: cleanEmail
-      }
+      message: "Authentication successful."
     });
 
     response.cookies.set({

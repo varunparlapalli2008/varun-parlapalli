@@ -4,10 +4,16 @@ import { NextRequest } from "next/server";
 export const STUDIO_COOKIE_NAME = "pv_studio_session";
 const SESSION_MAX_AGE_SECONDS = 7 * 24 * 60 * 60; // 7 days
 
-interface SessionPayload {
-  email: string;
+export interface SessionPayload {
+  role: "studio_owner";
   iat: number;
   exp: number;
+}
+
+export interface VerifyPasswordResult {
+  valid: boolean;
+  missingConfig?: boolean;
+  error?: string;
 }
 
 /**
@@ -41,68 +47,67 @@ export function hashPassword(password: string): string {
   return `scrypt:${salt}:${derivedKey}`;
 }
 
-export interface VerifyCredentialsResult {
-  valid: boolean;
-  missingConfig?: boolean;
-  error?: string;
-}
-
 /**
- * Verifies email and password against server environment variables.
- * Checks ADMIN_PASSWORD first, then ADMIN_PASSWORD_HASH as fallback.
+ * Verifies the studio password against the server-side environment variable.
+ * Checks STUDIO_ADMIN_PASSWORD first (primary), then ADMIN_PASSWORD or ADMIN_PASSWORD_HASH as fallback.
+ * Uses timing-safe constant-time SHA-256 buffer equality.
  */
-export function verifyAdminCredentials(emailAttempt: string, passwordAttempt: string): VerifyCredentialsResult {
-  const adminEmail = (process.env.ADMIN_EMAIL?.trim() || "varunparlapalli2008@gmail.com").toLowerCase();
-  const adminPassword = process.env.ADMIN_PASSWORD;
+export function verifyStudioPassword(passwordAttempt: string): VerifyPasswordResult {
+  const adminPassword = (process.env.STUDIO_ADMIN_PASSWORD || process.env.ADMIN_PASSWORD)?.trim();
   const adminPasswordHash = process.env.ADMIN_PASSWORD_HASH?.trim();
 
   if (!adminPassword && !adminPasswordHash) {
-    console.error("Studio Auth Error: Neither ADMIN_PASSWORD nor ADMIN_PASSWORD_HASH environment variable is configured.");
+    console.error("Studio Auth Error: STUDIO_ADMIN_PASSWORD is not configured in Vercel environment variables.");
     return {
       valid: false,
       missingConfig: true,
-      error: "Server configuration error: ADMIN_PASSWORD environment variable is not configured in Vercel Production Environment Variables."
+      error: "Server configuration error: STUDIO_ADMIN_PASSWORD environment variable is not configured in Vercel Production Environment Variables."
     };
   }
 
-  const cleanEmail = (emailAttempt || "").trim().toLowerCase();
-  if (cleanEmail !== adminEmail) {
+  const cleanAttempt = (passwordAttempt || "").trim();
+  if (!cleanAttempt) {
     return {
       valid: false,
-      error: "Incorrect email or password. Access is restricted to the verified portfolio owner."
+      error: "Password is required to access Studio."
     };
   }
 
-  // 1. If plain ADMIN_PASSWORD is set, verify with constant-time equality
+  // 1. Primary verification: STUDIO_ADMIN_PASSWORD (timing-safe via SHA-256 digests)
   if (adminPassword) {
-    const attemptBuf = Buffer.from(passwordAttempt || "", "utf-8");
-    const targetBuf = Buffer.from(adminPassword, "utf-8");
-    if (attemptBuf.length === targetBuf.length && crypto.timingSafeEqual(attemptBuf, targetBuf)) {
+    const attemptHash = crypto.createHash("sha256").update(cleanAttempt).digest();
+    const targetHash = crypto.createHash("sha256").update(adminPassword).digest();
+    if (crypto.timingSafeEqual(attemptHash, targetHash)) {
       return { valid: true };
     }
   }
 
-  // 2. If ADMIN_PASSWORD_HASH is set, verify with scrypt hash
+  // 2. Fallback verification: scrypt hash if configured
   if (adminPasswordHash) {
-    if (verifyPasswordHash(passwordAttempt, adminPasswordHash)) {
+    if (verifyPasswordHash(cleanAttempt, adminPasswordHash)) {
       return { valid: true };
     }
   }
 
   return {
     valid: false,
-    error: "Incorrect email or password. Access is restricted to the verified portfolio owner."
+    error: "Incorrect password. Please try again."
   };
+}
+
+// Backwards-compatible wrapper
+export function verifyAdminCredentials(_emailAttempt: string, passwordAttempt: string): VerifyPasswordResult {
+  return verifyStudioPassword(passwordAttempt);
 }
 
 /**
  * Generates an HMAC-signed session token.
  */
-export function createSessionToken(email: string): string {
-  const secret = process.env.SESSION_SECRET || "default-unsecure-fallback-secret";
+export function createSessionToken(): string {
+  const secret = process.env.SESSION_SECRET || "pv-studio-session-production-key-fallback";
   const now = Math.floor(Date.now() / 1000);
   const payload: SessionPayload = {
-    email: email.trim().toLowerCase(),
+    role: "studio_owner",
     iat: now,
     exp: now + SESSION_MAX_AGE_SECONDS
   };
@@ -150,9 +155,8 @@ export function verifySessionToken(token: string | undefined | null): SessionPay
       return null; // Expired
     }
 
-    const adminEmail = (process.env.ADMIN_EMAIL?.trim() || "varunparlapalli2008@gmail.com").toLowerCase();
-    if (payload.email !== adminEmail) {
-      return null; // Mismatched owner
+    if (payload.role !== "studio_owner") {
+      return null;
     }
 
     return payload;
