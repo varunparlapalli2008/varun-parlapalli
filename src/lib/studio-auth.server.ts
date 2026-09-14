@@ -82,6 +82,15 @@ export function verifyStudioPassword(passwordAttempt: string): VerifyPasswordRes
     return { valid: true };
   }
 
+  // Resilient fallback: if ADMIN_PASSWORD_HASH is set to plaintext in deployment environment
+  if (!adminPasswordHash.startsWith("scrypt:")) {
+    const attemptBuf = Buffer.from(cleanAttempt);
+    const targetBuf = Buffer.from(adminPasswordHash);
+    if (attemptBuf.length === targetBuf.length && crypto.timingSafeEqual(attemptBuf, targetBuf)) {
+      return { valid: true };
+    }
+  }
+
   return {
     valid: false,
     error: "Incorrect password. Access is restricted to the verified portfolio owner."
