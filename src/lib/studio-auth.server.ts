@@ -52,18 +52,9 @@ export interface VerifyCredentialsResult {
  * Checks ADMIN_PASSWORD first, then ADMIN_PASSWORD_HASH as fallback.
  */
 export function verifyAdminCredentials(emailAttempt: string, passwordAttempt: string): VerifyCredentialsResult {
-  const adminEmail = process.env.ADMIN_EMAIL?.trim().toLowerCase();
+  const adminEmail = (process.env.ADMIN_EMAIL?.trim() || "varunparlapalli2008@gmail.com").toLowerCase();
   const adminPassword = process.env.ADMIN_PASSWORD;
   const adminPasswordHash = process.env.ADMIN_PASSWORD_HASH?.trim();
-
-  if (!adminEmail) {
-    console.error("Studio Auth Error: ADMIN_EMAIL environment variable is not configured.");
-    return {
-      valid: false,
-      missingConfig: true,
-      error: "Server configuration error: ADMIN_EMAIL environment variable is not configured."
-    };
-  }
 
   if (!adminPassword && !adminPasswordHash) {
     console.error("Studio Auth Error: Neither ADMIN_PASSWORD nor ADMIN_PASSWORD_HASH environment variable is configured.");
@@ -159,8 +150,8 @@ export function verifySessionToken(token: string | undefined | null): SessionPay
       return null; // Expired
     }
 
-    const adminEmail = process.env.ADMIN_EMAIL?.trim().toLowerCase();
-    if (adminEmail && payload.email !== adminEmail) {
+    const adminEmail = (process.env.ADMIN_EMAIL?.trim() || "varunparlapalli2008@gmail.com").toLowerCase();
+    if (payload.email !== adminEmail) {
       return null; // Mismatched owner
     }
 
