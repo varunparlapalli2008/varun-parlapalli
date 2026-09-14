@@ -73,8 +73,12 @@ export function verifyStudioPassword(passwordAttempt: string): VerifyPasswordRes
     };
   }
 
-  // 1. Primary verification: STUDIO_ADMIN_PASSWORD (timing-safe via SHA-256 digests)
+  // 1. Primary verification: STUDIO_ADMIN_PASSWORD (supports scrypt hash or plain password)
   if (adminPassword) {
+    if (adminPassword.startsWith("scrypt:") && verifyPasswordHash(cleanAttempt, adminPassword)) {
+      return { valid: true };
+    }
+
     const attemptHash = crypto.createHash("sha256").update(cleanAttempt).digest();
     const targetHash = crypto.createHash("sha256").update(adminPassword).digest();
     if (crypto.timingSafeEqual(attemptHash, targetHash)) {
