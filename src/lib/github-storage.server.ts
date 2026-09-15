@@ -2,6 +2,7 @@ import fs from "fs";
 import path from "path";
 
 const DEFAULT_REPO = "varunparlapalli2008/varun-parlapalli";
+const DEFAULT_BRANCH = "main";
 const DEFAULT_PATH = "data/portfolio-store.json";
 
 const LOCAL_DATA_DIR = path.join(process.cwd(), "data");
@@ -22,12 +23,13 @@ export function isGitHubStorageConfigured(): boolean {
 export function getGitHubStorageConfig() {
   const token = process.env.GITHUB_CONTENT_TOKEN?.trim();
   const repo = process.env.GITHUB_REPO?.trim() || DEFAULT_REPO;
+  const branch = process.env.GITHUB_BRANCH?.trim() || DEFAULT_BRANCH;
   const contentPath = process.env.GITHUB_CONTENT_PATH?.trim() || DEFAULT_PATH;
-  return { token, repo, contentPath };
+  return { token, repo, branch, contentPath };
 }
 
 /**
- * Reads the latest content from GitHub Contents API.
+ * Reads the latest content from GitHub Contents API with cache: "no-store".
  */
 export async function fetchContentFromGitHub<T = unknown>(): Promise<{ data: T; sha: string }> {
   const { token, repo, contentPath } = getGitHubStorageConfig();
@@ -61,12 +63,13 @@ export async function fetchContentFromGitHub<T = unknown>(): Promise<{ data: T; 
 
 /**
  * Commits updated content to GitHub repository via Contents API.
+ * Reports success only when GitHub returns a valid commit SHA.
  */
 export async function commitContentToGitHub<T = unknown>(
   data: T,
   commitMessage = "Update portfolio content via Royal Atelier Studio"
 ): Promise<{ sha: string }> {
-  const { token, repo, contentPath } = getGitHubStorageConfig();
+  const { token, repo, branch, contentPath } = getGitHubStorageConfig();
   if (!token) {
     throw new Error("GITHUB_CONTENT_TOKEN is not configured.");
   }
@@ -88,7 +91,7 @@ export async function commitContentToGitHub<T = unknown>(
   const bodyPayload: Record<string, unknown> = {
     message: commitMessage,
     content: contentBase64,
-    branch: "main"
+    branch: branch
   };
   if (currentSha) {
     bodyPayload.sha = currentSha;
@@ -112,50 +115,31 @@ export async function commitContentToGitHub<T = unknown>(
   }
 
   const putResult = await putResponse.json();
-  return { sha: putResult.content?.sha || "" };
-}
+  const commitSha = putResult.commit?.sha;
+  if (!commitSha) {
+    throw new Error("GitHub Contents API did not return a commit SHA.");
+  }
 
-let memoryStore: unknown = null;
-const SERVERLESS_TMP_FILE = path.join(process.platform === "win32" ? process.cwd() : "/tmp", "portfolio-store.json");
+  return { sha: commitSha };
+}
 
 /**
  * Reads portfolio storage:
- * Checks GitHub if configured, otherwise reads local filesystem.
+ * Always fetches from GitHub with cache: "no-store" when configured.
+ * No in-memory cache and no /tmp fallback.
  */
 export async function readPortfolioStorage<T = unknown>(fallbackInitial: T): Promise<T> {
-  if (memoryStore) {
-    return memoryStore as T;
-  }
-
-  // If GitHub token is present, try remote first
+  // If GitHub token is present, always fetch latest from GitHub
   if (isGitHubStorageConfigured()) {
     try {
       const { data } = await fetchContentFromGitHub<T>();
-      memoryStore = data;
-      // Sync local file if running locally with token
-      try {
-        if (!fs.existsSync(LOCAL_DATA_DIR)) fs.mkdirSync(LOCAL_DATA_DIR, { recursive: true });
-        fs.writeFileSync(LOCAL_DATA_FILE, JSON.stringify(data, null, 2), "utf-8");
-      } catch {
-        // Read-only filesystem is normal in serverless
-      }
       return data;
     } catch (err) {
-      console.error("Error reading from GitHub Contents API, falling back to local file:", err);
+      console.error("Error reading from GitHub Contents API:", err);
     }
   }
 
-  // Check /tmp file for serverless environments
-  try {
-    if (fs.existsSync(SERVERLESS_TMP_FILE)) {
-      const content = fs.readFileSync(SERVERLESS_TMP_FILE, "utf-8");
-      const parsed = JSON.parse(content) as T;
-      memoryStore = parsed;
-      return parsed;
-    }
-  } catch {}
-
-  // Fallback to local file
+  // Fallback to local file for localhost development
   try {
     if (fs.existsSync(LOCAL_DATA_FILE)) {
       const content = fs.readFileSync(LOCAL_DATA_FILE, "utf-8");
@@ -170,18 +154,41 @@ export async function readPortfolioStorage<T = unknown>(fallbackInitial: T): Pro
 
 /**
  * Saves portfolio storage:
- * In production/Vercel, requires GitHub Contents API token.
- * In local development, falls back to writing data/portfolio-store.json.
+ * On Vercel production, GITHUB_CONTENT_TOKEN is strictly required.
+ * Never writes to /tmp or caches in memoryStore.
+ * Reports success only when GitHub returns a commit SHA.
+ * Local JSON storage is strictly kept for localhost development.
  */
 export async function writePortfolioStorage<T = unknown>(data: T): Promise<StoragePersistenceResult> {
-  const isVercelProduction = Boolean(process.env.VERCEL);
-  memoryStore = data;
+  const isVercel = Boolean(process.env.VERCEL);
+  const isProduction = process.env.NODE_ENV === "production" || isVercel;
 
-  // 1. If GitHub token is configured, push commit to repository
+  // 1. On Vercel production, GITHUB_CONTENT_TOKEN is strictly required
+  if (isVercel || isProduction) {
+    if (!isGitHubStorageConfigured()) {
+      return {
+        success: false,
+        destination: "github",
+        message: "Publish failed: GITHUB_CONTENT_TOKEN is required on Vercel production. Please configure GITHUB_CONTENT_TOKEN in Vercel environment variables.",
+        error: "Missing GITHUB_CONTENT_TOKEN in production environment."
+      };
+    }
+  }
+
+  // 2. If GitHub storage is configured, push commit to repository
   if (isGitHubStorageConfigured()) {
     try {
       const commitRes = await commitContentToGitHub(data);
-      // Also update local copy if filesystem is writable
+      if (!commitRes.sha) {
+        return {
+          success: false,
+          destination: "github",
+          message: "Publish failed: GitHub did not return a commit SHA.",
+          error: "Missing commit SHA from GitHub response."
+        };
+      }
+
+      // Also update local copy if filesystem is writable (localhost dev with token)
       try {
         if (!fs.existsSync(LOCAL_DATA_DIR)) fs.mkdirSync(LOCAL_DATA_DIR, { recursive: true });
         fs.writeFileSync(LOCAL_DATA_FILE, JSON.stringify(data, null, 2), "utf-8");
@@ -193,33 +200,20 @@ export async function writePortfolioStorage<T = unknown>(data: T): Promise<Stora
         success: true,
         destination: "github",
         sha: commitRes.sha,
-        message: "Successfully committed and published updates to GitHub repository (data/portfolio-store.json)."
+        message: `Successfully committed and published updates to GitHub repository (${commitRes.sha.slice(0, 7)}).`
       };
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : String(error);
       return {
         success: false,
         destination: "github",
-        message: "Failed to commit changes to GitHub.",
+        message: `Failed to commit changes to GitHub: ${message}`,
         error: message
       };
     }
   }
 
-  // 2. If running on Vercel without token, save to serverless session & tmp
-  if (isVercelProduction) {
-    try {
-      fs.writeFileSync(SERVERLESS_TMP_FILE, JSON.stringify(data, null, 2), "utf-8");
-    } catch {}
-
-    return {
-      success: true,
-      destination: "local",
-      message: "Updates saved to active serverless session (configure GITHUB_CONTENT_TOKEN in Vercel for permanent GitHub commits)."
-    };
-  }
-
-  // 3. In local development/preview without token, write to local file
+  // 3. Local JSON storage strictly for localhost development
   try {
     if (!fs.existsSync(LOCAL_DATA_DIR)) {
       fs.mkdirSync(LOCAL_DATA_DIR, { recursive: true });
@@ -229,7 +223,7 @@ export async function writePortfolioStorage<T = unknown>(data: T): Promise<Stora
     return {
       success: true,
       destination: "local",
-      message: "Updates saved to local data/portfolio-store.json. (To sync with GitHub on live domain, configure GITHUB_CONTENT_TOKEN)."
+      message: "Updates saved to local data/portfolio-store.json for localhost development."
     };
   } catch (error) {
     console.error("Failed to write to local storage file:", error);

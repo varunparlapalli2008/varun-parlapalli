@@ -1,7 +1,7 @@
 import React from "react";
 import Link from "next/link";
 import { getPublishedAchievements, getPublishedCredentials } from "@/lib/content-store";
-import { ArrowLeft, Trophy, Award, CheckCircle, ShieldCheck } from "lucide-react";
+import { ArrowLeft } from "lucide-react";
 import Monogram from "@/components/ui/Monogram";
 import Footer from "@/components/layout/Footer";
 
@@ -11,6 +11,9 @@ export const metadata = {
   title: "Achievements & Credentials Archive | Parlapalli Varun",
   description: "Verified hackathon placements, competitive milestones, and learning credentials achieved by Parlapalli Varun.",
 };
+
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
 
 export default async function AchievementsArchivePage() {
   const achievements = await getPublishedAchievements();

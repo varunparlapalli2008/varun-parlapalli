@@ -7,6 +7,10 @@ import { ArrowLeft, CheckCircle2, AlertCircle, Layers, ArrowUpRight, ShieldCheck
 import Monogram from "@/components/ui/Monogram";
 import Footer from "@/components/layout/Footer";
 
+export const dynamic = "force-dynamic";
+export const dynamicParams = true;
+export const revalidate = 0;
+
 export async function generateStaticParams() {
   const projects = await getPublishedProjects();
   return projects.map((p) => ({ slug: p.slug }));

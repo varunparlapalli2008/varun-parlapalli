@@ -11,6 +11,9 @@ export const metadata = {
   description: "Explore selected software engineering, UI/UX design systems, and frontend architecture projects by Parlapalli Varun.",
 };
 
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
 export default async function ProjectsArchivePage() {
   const projects = await getPublishedProjects();
 

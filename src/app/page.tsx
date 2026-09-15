@@ -19,6 +19,10 @@ import CurrentlyLearning from "@/components/sections/CurrentlyLearning";
 import ContactSection from "@/components/sections/ContactSection";
 import Footer from "@/components/layout/Footer";
 import CinematicIntro from "@/components/intro/CinematicIntro";
+
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
 export default async function HomePage() {
   const profile = await getPublishedProfile();
   const projects = await getPublishedProjects();
@@ -40,7 +44,7 @@ export default async function HomePage() {
 
       <main className="min-h-screen bg-[#F7F4EE] flex flex-col selection:bg-[#590B20] selection:text-white">
         {/* Full-Width Centered Editorial Hero */}
-        <HeroSection />
+        <HeroSection profile={profile} />
 
         {/* Selected Projects immediately below Hero */}
         <SelectedWork projects={projects} />

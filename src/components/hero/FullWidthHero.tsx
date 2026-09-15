@@ -6,11 +6,21 @@ import { MapPin, Sparkles, Send, ArrowRight } from "lucide-react";
 import { useAssistant } from "../ai/AssistantContext";
 import ArchitecturalArtwork from "./ArchitecturalArtwork";
 import { useAmbientAnimation, FOCUS_RING } from "@/lib/motion";
+import { PortfolioProfile } from "@/types/portfolio";
 
-export default function FullWidthHero() {
+interface FullWidthHeroProps {
+  profile?: PortfolioProfile;
+}
+
+export default function FullWidthHero({ profile }: FullWidthHeroProps) {
   const { openAssistant } = useAssistant();
   const [query, setQuery] = useState("");
   const isAmbientActive = useAmbientAnimation();
+
+  const rawName = (profile?.name || "PARLAPALLI VARUN").trim();
+  const nameParts = rawName.split(/\s+/);
+  const firstLine = nameParts.length > 1 ? nameParts.slice(0, -1).join(" ") : nameParts[0];
+  const secondLine = nameParts.length > 1 ? nameParts[nameParts.length - 1] : "";
 
   const handleQuerySubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -44,7 +54,7 @@ export default function FullWidthHero() {
         >
           <div className="flex items-center gap-1.5 text-[#68626B]">
             <MapPin className="w-3.5 h-3.5 text-[#AC9062]" />
-            <span>Guntur, Andhra Pradesh</span>
+            <span>{profile?.location || "Guntur, Andhra Pradesh"}</span>
           </div>
           <div className="text-[10px] sm:text-[11px] tracking-[0.18em] sm:tracking-[0.22em] text-[#68626B]">
             BUILD · LEARN · COLLABORATE
@@ -68,20 +78,22 @@ export default function FullWidthHero() {
             />
           </div>
 
-          {/* Dominant Heading: PARLAPALLI VARUN */}
+          {/* Dominant Heading: Dynamic Name from Profile */}
           <h1 className="font-display text-4xl xs:text-5xl sm:text-7xl md:text-8xl lg:text-[92px] font-normal leading-[0.92] tracking-[-0.015em] text-[#20060B] mb-5 sm:mb-6 max-w-full">
             <span
               className="block anim-fade-up"
               style={{ animationDelay: "0.25s" }}
             >
-              PARLAPALLI
+              {firstLine}
             </span>
-            <span
-              className="block text-[#20060B] anim-fade-up"
-              style={{ animationDelay: "0.38s" }}
-            >
-              VARUN
-            </span>
+            {secondLine && (
+              <span
+                className="block text-[#20060B] anim-fade-up"
+                style={{ animationDelay: "0.38s" }}
+              >
+                {secondLine}
+              </span>
+            )}
           </h1>
 
           {/* Role & Supporting Role */}
@@ -89,12 +101,16 @@ export default function FullWidthHero() {
             className="space-y-1 mb-5 sm:mb-6 anim-fade-up max-w-full px-2"
             style={{ animationDelay: "0.5s" }}
           >
-            <p className="text-lg sm:text-2xl font-medium text-[#20060B] tracking-tight font-sans">
-              Frontend Developer &amp; UI/UX Designer
-            </p>
-            <p className="text-xs sm:text-[15px] text-[#68626B] font-sans">
-              Cybersecurity Undergraduate · COO at CodeXa Agency
-            </p>
+            {profile?.primaryRole && (
+              <p className="text-lg sm:text-2xl font-medium text-[#20060B] tracking-tight font-sans">
+                {profile.primaryRole}
+              </p>
+            )}
+            {profile?.supportingRole && (
+              <p className="text-xs sm:text-[15px] text-[#68626B] font-sans">
+                {profile.supportingRole}
+              </p>
+            )}
           </div>
 
           {/* Editorial Introduction Paragraph */}
@@ -102,7 +118,7 @@ export default function FullWidthHero() {
             className="text-sm sm:text-lg leading-relaxed text-[#20060B]/90 font-editorial max-w-2xl mb-6 sm:mb-8 anim-fade-up px-2 sm:px-0"
             style={{ animationDelay: "0.62s" }}
           >
-            I turn ideas into clear, responsive digital products through design, code, and thoughtful execution.
+            {profile?.introduction || "I turn ideas into clear, responsive digital products through design, code, and thoughtful execution."}
           </p>
 
           {/* Action Buttons */}

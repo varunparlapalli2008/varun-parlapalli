@@ -7,25 +7,145 @@ import {
   ArrowUpRight, 
   ExternalLink, 
   Plus, 
-  Minus,
-  Sparkles
+  Minus
 } from "lucide-react";
 import { Skill } from "@/types/portfolio";
-import { COMPETENCY_CATEGORIES } from "@/lib/competencies-data";
+import { INITIAL_SKILLS } from "@/lib/initial-data";
+import { COMPETENCY_CATEGORIES, CompetencySkill } from "@/lib/competencies-data";
 
 interface SkillsGridProps {
   skills?: Skill[];
 }
 
+const ALL_COMPETENCY_SKILLS: Record<string, CompetencySkill> = {};
+for (const cat of COMPETENCY_CATEGORIES) {
+  for (const s of cat.skills) {
+    ALL_COMPETENCY_SKILLS[s.name.toLowerCase().trim()] = s;
+  }
+}
+
+const STANDARD_CATEGORIES: { name: string; tagline: string }[] = [
+  {
+    name: "Development",
+    tagline: "Modern web applications, component architecture, and responsive interfaces."
+  },
+  {
+    name: "Design & Prototyping",
+    tagline: "User-centered interface design, design systems, and interaction models."
+  },
+  {
+    name: "Programming Foundations",
+    tagline: "Core syntax, systems, algorithmic thinking, and security principles."
+  },
+  {
+    name: "Tools & Workflow",
+    tagline: "Developer tooling, version control, build pipelines, and cloud deployment."
+  }
+];
+
+interface EnrichedSkill {
+  id: string;
+  name: string;
+  classification: string;
+  shortUsage: string;
+  appliedIn: string;
+  practicalUsage: string;
+  relatedTechnologies: string[];
+  areasOfImplementation: string[];
+  projectEvidence?: Array<{
+    name: string;
+    description: string;
+    links?: Array<{ label: string; url: string; isExternal?: boolean }>;
+  }>;
+}
+
+interface DynamicCategory {
+  id: string;
+  number: string;
+  name: string;
+  tagline: string;
+  skills: EnrichedSkill[];
+}
+
 export default function SkillsGrid({ skills }: SkillsGridProps) {
+  const effectiveSkills = skills && skills.length > 0 ? skills : INITIAL_SKILLS;
+
+  const uniqueCategories = Array.from(
+    new Set([
+      ...STANDARD_CATEGORIES.map((c) => c.name),
+      ...effectiveSkills.map((s) => s.category)
+    ])
+  ).filter((catName) => effectiveSkills.some((s) => s.category === catName));
+
+  const categories: DynamicCategory[] = uniqueCategories.map((catName, index) => {
+    const meta = STANDARD_CATEGORIES.find((c) => c.name === catName);
+    const catSkills = effectiveSkills.filter((s) => s.category === catName);
+
+    const enrichedSkills: EnrichedSkill[] = catSkills.map((s) => {
+      const normalizedName = s.name.toLowerCase().trim();
+      const match =
+        ALL_COMPETENCY_SKILLS[normalizedName] ||
+        Object.values(ALL_COMPETENCY_SKILLS).find(
+          (cs) =>
+            cs.name.toLowerCase().includes(normalizedName) ||
+            normalizedName.includes(cs.name.toLowerCase())
+        );
+
+      const classification = s.proficiency || match?.classification || "Core";
+      const appliedInText =
+        s.relatedProjectSlugs && s.relatedProjectSlugs.length > 0
+          ? `Applied in: ${s.relatedProjectSlugs.join(", ")}`
+          : match?.appliedIn || "Applied in engineering coursework & practical development";
+
+      const projectEvidence =
+        s.relatedProjectSlugs && s.relatedProjectSlugs.length > 0
+          ? s.relatedProjectSlugs.map((slug) => ({
+              name: slug.toUpperCase(),
+              description: `Applied in ${slug} architecture and production workflow.`,
+              links: [{ label: "View Case Study", url: `/projects/${slug}` }]
+            }))
+          : match?.projectEvidence;
+
+      return {
+        id: s.id,
+        name: s.name,
+        classification,
+        shortUsage:
+          match?.shortUsage ||
+          `Proficiency: ${s.proficiency}. Actively developed and applied in practical technical systems.`,
+        appliedIn: appliedInText,
+        practicalUsage:
+          match?.practicalUsage ||
+          `Hands-on proficiency in ${s.name} applied across portfolio implementations and design systems.`,
+        relatedTechnologies: match?.relatedTechnologies || [s.category],
+        areasOfImplementation: match?.areasOfImplementation || [s.category, `${s.proficiency} Proficiency`],
+        projectEvidence
+      };
+    });
+
+    return {
+      id: catName.toLowerCase().replace(/[^a-z0-9]+/g, "-"),
+      number: String(index + 1).padStart(2, "0"),
+      name: catName,
+      tagline: meta?.tagline || `Competencies and practical engineering execution in ${catName}.`,
+      skills: enrichedSkills
+    };
+  });
+
   const [activeCategoryId, setActiveCategoryId] = useState<string>(
-    COMPETENCY_CATEGORIES[0]?.id || "programming-languages"
+    categories[0]?.id || "development"
   );
   const [expandedSkillId, setExpandedSkillId] = useState<string | null>(null);
 
   const activeCategory =
-    COMPETENCY_CATEGORIES.find((cat) => cat.id === activeCategoryId) ||
-    COMPETENCY_CATEGORIES[0];
+    categories.find((cat) => cat.id === activeCategoryId) ||
+    categories[0] || {
+      id: "empty",
+      number: "01",
+      name: "Skills",
+      tagline: "Technical competencies",
+      skills: []
+    };
 
   const handleCategoryChange = (categoryId: string) => {
     setActiveCategoryId(categoryId);
@@ -70,7 +190,7 @@ export default function SkillsGrid({ skills }: SkillsGridProps) {
             aria-orientation="horizontal"
             className="flex items-center gap-2.5 overflow-x-auto pb-3 -mx-2 px-2 scrollbar-none snap-x snap-mandatory"
           >
-            {COMPETENCY_CATEGORIES.map((cat) => {
+            {categories.map((cat) => {
               const isActive = activeCategoryId === cat.id;
               return (
                 <button
@@ -113,7 +233,7 @@ export default function SkillsGrid({ skills }: SkillsGridProps) {
                 aria-orientation="vertical"
                 className="space-y-1.5"
               >
-                {COMPETENCY_CATEGORIES.map((cat) => {
+                {categories.map((cat) => {
                   const isActive = activeCategoryId === cat.id;
                   return (
                     <button

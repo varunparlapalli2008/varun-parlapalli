@@ -60,8 +60,17 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Revalidate public routes and layout cache so updates appear immediately
+    // Revalidate public routes after successful publish
     try {
+      revalidatePath("/");
+      revalidatePath("/projects");
+      revalidatePath("/achievements");
+      for (const project of updatedData.projects) {
+        if (project.slug) {
+          revalidatePath(`/projects/${project.slug}`);
+        }
+      }
+      revalidatePath("/projects/[slug]", "page");
       revalidatePath("/", "layout");
     } catch (revalError) {
       console.warn("Revalidation notice:", revalError);
