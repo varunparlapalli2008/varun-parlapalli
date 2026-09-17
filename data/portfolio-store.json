@@ -546,14 +546,6 @@
       "published": true
     },
     {
-      "id": "learn-2",
-      "topic": "Application Security & OWASP Top 10 Defenses",
-      "area": "Cybersecurity Engineering",
-      "dated": "August 2026",
-      "notes": "Studying CSRF mitigation, content security policies (CSP), and secure authentication flows.",
-      "published": true
-    },
-    {
       "id": "learn-3",
       "topic": "Micro-interactions & Physics-based Motion",
       "area": "UI/UX Engineering",
