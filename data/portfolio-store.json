@@ -118,7 +118,7 @@
         "Prototype stage focusing on UI/UX telemetry design; synthetic mock telemetry is utilized for demonstration."
       ],
       "liveUrl": "https://aegis-legacy.vercel.app/",
-      "repoUrl": "https://github.com/varunparlapalli2008/Aegis-Legacy",
+      "repoUrl": "",
       "published": true,
       "order": 2
     },
@@ -161,7 +161,7 @@
         "Active during the event cycle; archived demonstration showcase preserved."
       ],
       "liveUrl": "https://bookutsav-inovationhub.vercel.app/",
-      "repoUrl": "https://github.com/varunparlapalli2008/bookutsav-inovationhub",
+      "repoUrl": "",
       "published": true,
       "order": 3
     }
