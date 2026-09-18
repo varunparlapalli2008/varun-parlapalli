@@ -536,5 +536,14 @@
       "published": false
     }
   ],
-  "currentlyLearning": []
+  "currentlyLearning": [
+    {
+      "id": "learn-1789714145985",
+      "topic": "New Technology or Paradigm",
+      "area": "Frontend Architecture",
+      "dated": "Active Exploration",
+      "notes": "Key focus points and practical experiments.",
+      "published": true
+    }
+  ]
 }
