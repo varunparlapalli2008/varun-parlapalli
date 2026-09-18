@@ -538,19 +538,115 @@
   ],
   "currentlyLearning": [
     {
-      "id": "learn-1",
-      "topic": "Next.js Server Actions & Streaming SSR",
-      "area": "Full Stack Architecture",
-      "dated": "September 2026",
-      "notes": "Deepening patterns around progressive enhancement, optimistic UI updates, and server components.",
-      "published": true
-    },
-    {
       "id": "learn-3",
       "topic": "Micro-interactions & Physics-based Motion",
       "area": "UI/UX Engineering",
       "dated": "September 2026",
       "notes": "Crafting restrained 150-300ms transitions and respecting prefers-reduced-motion across devices.",
+      "published": true
+    },
+    {
+      "id": "learn-1789713986822",
+      "topic": "New Technology or Paradigm",
+      "area": "Frontend Architecture",
+      "dated": "Active Exploration",
+      "notes": "Key focus points and practical experiments.",
+      "published": true
+    },
+    {
+      "id": "learn-1789713991526",
+      "topic": "New Technology or Paradigm",
+      "area": "Frontend Architecture",
+      "dated": "Active Exploration",
+      "notes": "Key focus points and practical experiments.",
+      "published": true
+    },
+    {
+      "id": "learn-1789713994511",
+      "topic": "New Technology or Paradigm",
+      "area": "Frontend Architecture",
+      "dated": "Active Exploration",
+      "notes": "Key focus points and practical experiments.",
+      "published": true
+    },
+    {
+      "id": "learn-1789713994725",
+      "topic": "New Technology or Paradigm",
+      "area": "Frontend Architecture",
+      "dated": "Active Exploration",
+      "notes": "Key focus points and practical experiments.",
+      "published": true
+    },
+    {
+      "id": "learn-1789713994890",
+      "topic": "New Technology or Paradigm",
+      "area": "Frontend Architecture",
+      "dated": "Active Exploration",
+      "notes": "Key focus points and practical experiments.",
+      "published": true
+    },
+    {
+      "id": "learn-1789713995084",
+      "topic": "New Technology or Paradigm",
+      "area": "Frontend Architecture",
+      "dated": "Active Exploration",
+      "notes": "Key focus points and practical experiments.",
+      "published": true
+    },
+    {
+      "id": "learn-1789713995247",
+      "topic": "New Technology or Paradigm",
+      "area": "Frontend Architecture",
+      "dated": "Active Exploration",
+      "notes": "Key focus points and practical experiments.",
+      "published": true
+    },
+    {
+      "id": "learn-1789713995442",
+      "topic": "New Technology or Paradigm",
+      "area": "Frontend Architecture",
+      "dated": "Active Exploration",
+      "notes": "Key focus points and practical experiments.",
+      "published": true
+    },
+    {
+      "id": "learn-1789713995620",
+      "topic": "New Technology or Paradigm",
+      "area": "Frontend Architecture",
+      "dated": "Active Exploration",
+      "notes": "Key focus points and practical experiments.",
+      "published": true
+    },
+    {
+      "id": "learn-1789713995799",
+      "topic": "New Technology or Paradigm",
+      "area": "Frontend Architecture",
+      "dated": "Active Exploration",
+      "notes": "Key focus points and practical experiments.",
+      "published": true
+    },
+    {
+      "id": "learn-1789713995941",
+      "topic": "New Technology or Paradigm",
+      "area": "Frontend Architecture",
+      "dated": "Active Exploration",
+      "notes": "Key focus points and practical experiments.",
+      "published": true
+    },
+    {
+      "id": "learn-1789713996159",
+      "topic": "New Technology or Paradigm",
+      "area": "Frontend Architecture",
+      "dated": "Active Exploration",
+      "notes": "Key focus points and practical experiments.",
+      "published": true
+    },
+    {
+      "id": "learn-1789714000747",
+      "topic": "New Technology or Paradigm",
+      "area": "Frontend Architecture",
+      "dated": "Active Exploration",
+      "notes": "Key focus points and practical experiments.",
       "published": true
     }
   ]
