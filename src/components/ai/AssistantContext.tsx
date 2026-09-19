@@ -373,6 +373,15 @@ export function AssistantProvider({ children }: { children: ReactNode }) {
 
   const openAssistant = useCallback((initialQuestion?: string) => {
     setIsOpen(true);
+    fetch("/api/assistant")
+      .then((res) => res.json())
+      .then((data) => {
+        if (data && typeof data.configured === "boolean") {
+          setIsConfigured(data.configured);
+        }
+      })
+      .catch(() => {});
+
     if (initialQuestion && initialQuestion.trim() && !isRequestInFlightRef.current) {
       setTimeout(() => {
         sendMessage(initialQuestion.trim());

@@ -21,7 +21,10 @@ const cormorant = Cormorant_Garamond({
   display: "swap",
 });
 
+const siteUrl = process.env.NEXT_PUBLIC_SITE_URL?.replace(/\/+$/, "") || "https://varun-parlapalli.vercel.app";
+
 export const metadata: Metadata = {
+  metadataBase: new URL(siteUrl),
   title: "Parlapalli Varun — Frontend Developer & UI/UX Designer | Royal Atelier",
   description: "Personal portfolio of Parlapalli Varun. Cybersecurity Undergraduate, COO at CodeXa Agency, Frontend Developer & UI/UX Designer turning ideas into clear, responsive digital products.",
   keywords: ["Parlapalli Varun", "Frontend Developer", "UI/UX Designer", "CodeXa Agency", "Cybersecurity", "NEC Portal", "Portfolio"],
@@ -30,7 +33,7 @@ export const metadata: Metadata = {
   openGraph: {
     type: "website",
     locale: "en_US",
-    url: "https://parlapallivarun.dev",
+    url: siteUrl,
     title: "Parlapalli Varun — Royal Atelier Portfolio",
     description: "I turn ideas into clear, responsive digital products through design, code, and thoughtful execution.",
     siteName: "Parlapalli Varun Portfolio",

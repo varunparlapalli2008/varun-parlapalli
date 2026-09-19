@@ -2,6 +2,9 @@ import { NextRequest, NextResponse } from "next/server";
 import { getPublishedPortfolioKnowledge } from "@/lib/content-store";
 import { isGeminiConfigured, streamGeminiContent, GeminiContent } from "@/lib/gemini.server";
 
+export const dynamic = "force-dynamic";
+export const maxDuration = 60;
+
 // Rate limiting map (in-memory per IP)
 const rateLimitMap = new Map<string, { count: number; timestamp: number }>();
 const MAX_REQUESTS_PER_MINUTE = 25;
@@ -130,21 +133,20 @@ PUBLISHED PORTFOLIO KNOWLEDGE BASE:
 ${knowledgeSource}`;
 
     // 6. Build conversation contents for Gemini
+    const historyTurns: GeminiContent[] = rawHistory
+      .filter((m: any) => m && typeof m.text === "string" && (m.sender === "user" || m.sender === "assistant") && m.id !== "welcome-init")
+      .map((m: any) => ({
+        role: m.sender === "user" ? ("user" as const) : ("model" as const),
+        parts: [{ text: m.text }]
+      }));
+
+    // Ensure conversation starts with a user turn if there is history
+    while (historyTurns.length > 0 && historyTurns[0].role === "model") {
+      historyTurns.shift();
+    }
+
     const contents: GeminiContent[] = [
-      {
-        role: "user",
-        parts: [{ text: systemPrompt }]
-      },
-      {
-        role: "model",
-        parts: [{ text: "Understood. I am Varun's AI Portfolio Assistant, strictly grounded in the published records above. I will never invent facts, will distinguish individual vs team contributions, and will provide relevant markdown links." }]
-      },
-      ...rawHistory
-        .filter((m: any) => m && typeof m.text === "string" && (m.sender === "user" || m.sender === "assistant"))
-        .map((m: any) => ({
-          role: m.sender === "user" ? ("user" as const) : ("model" as const),
-          parts: [{ text: m.text }]
-        })),
+      ...historyTurns,
       {
         role: "user",
         parts: [{ text: query }]
@@ -154,7 +156,7 @@ ${knowledgeSource}`;
     // 7. Call Gemini stream
     let geminiRes: Response;
     try {
-      geminiRes = await streamGeminiContent(contents, req.signal);
+      geminiRes = await streamGeminiContent(contents, systemPrompt, req.signal);
     } catch (fetchErr: any) {
       if (fetchErr.name === "AbortError") {
         return NextResponse.json(
@@ -165,6 +167,7 @@ ${knowledgeSource}`;
           { status: 504 }
         );
       }
+      console.error("[Assistant Route] Upstream fetch error:", fetchErr);
       return NextResponse.json(
         {
           error: "PROVIDER_OUTAGE",
@@ -177,13 +180,14 @@ ${knowledgeSource}`;
     // 8. Handle upstream errors separately
     if (!geminiRes.ok) {
       const errBody = await geminiRes.text().catch(() => "");
+      console.error(`[Assistant Route] Gemini API returned error (${geminiRes.status}):`, errBody);
       
       if (geminiRes.status === 400 || geminiRes.status === 403) {
         if (errBody.includes("API_KEY_INVALID") || errBody.includes("PERMISSION_DENIED")) {
           return NextResponse.json(
             {
               error: "INVALID_CREDENTIALS",
-              message: "The assistant encountered an authentication issue with the AI service. Please try again later or use the contact links."
+              message: "The assistant encountered an authentication issue with the AI service. Please verify your API key."
             },
             { status: 502 }
           );
@@ -254,9 +258,19 @@ ${knowledgeSource}`;
 
               try {
                 const parsed = JSON.parse(payload);
-                const delta = parsed.candidates?.[0]?.content?.parts?.[0]?.text;
-                if (delta) {
-                  await writeSSE({ text: delta });
+                if (parsed.error) {
+                  console.error("[Assistant Route] Stream payload error:", parsed.error);
+                  await writeSSE({ error: parsed.error.message || "An error occurred during generation." });
+                  continue;
+                }
+
+                const parts = parsed.candidates?.[0]?.content?.parts;
+                if (Array.isArray(parts)) {
+                  for (const part of parts) {
+                    if (part && typeof part.text === "string" && !part.thought && part.text.length > 0) {
+                      await writeSSE({ text: part.text });
+                    }
+                  }
                 }
               } catch {
                 // Chunk frame boundary
@@ -275,6 +289,7 @@ ${knowledgeSource}`;
           } catch {}
           return;
         }
+        console.error("[Assistant Route] Stream reader error:", streamErr);
         try {
           await writeSSE({
             error: "Generation interrupted. Please try again later or use the contact links."
