@@ -540,6 +540,14 @@
   "currentlyLearning": [
     {
       "id": "learn-1789714145985",
+      "topic": "harish is a good boy",
+      "area": "Frontend Architecture",
+      "dated": "Active Exploration",
+      "notes": "Key focus points and practical experiments.",
+      "published": true
+    },
+    {
+      "id": "learn-1789815901847",
       "topic": "New Technology or Paradigm",
       "area": "Frontend Architecture",
       "dated": "Active Exploration",
