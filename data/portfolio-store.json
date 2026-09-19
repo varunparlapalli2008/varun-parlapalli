@@ -237,38 +237,10 @@
       ]
     },
     {
-      "id": "sk-8",
-      "name": "Figma Prototyping",
-      "category": "Design & Prototyping",
-      "proficiency": "Core",
-      "relatedProjectSlugs": [
-        "nec-portal"
-      ]
-    },
-    {
       "id": "sk-9",
       "name": "Design Systems & Tokens",
       "category": "Design & Prototyping",
       "proficiency": "Core",
-      "relatedProjectSlugs": [
-        "nec-portal"
-      ]
-    },
-    {
-      "id": "sk-10",
-      "name": "Responsive Layout Architecture",
-      "category": "Design & Prototyping",
-      "proficiency": "Core",
-      "relatedProjectSlugs": [
-        "nec-portal",
-        "bookutsav-hub"
-      ]
-    },
-    {
-      "id": "sk-11",
-      "name": "Accessibility & WCAG",
-      "category": "Design & Prototyping",
-      "proficiency": "Proficient",
       "relatedProjectSlugs": [
         "nec-portal"
       ]
@@ -316,15 +288,6 @@
       "category": "Tools & Workflow",
       "proficiency": "Core",
       "relatedProjectSlugs": []
-    },
-    {
-      "id": "sk-17",
-      "name": "Vite Bundler",
-      "category": "Tools & Workflow",
-      "proficiency": "Core",
-      "relatedProjectSlugs": [
-        "nec-portal"
-      ]
     },
     {
       "id": "sk-18",
@@ -409,7 +372,9 @@
       "isJourney": true,
       "featured": true,
       "order": 1,
-      "published": true
+      "published": true,
+      "verificationUrl": "https://www.skills.google/public_profiles/f6a4fb54-bba5-4304-a667-d20d42f57cc9/badges/16746122",
+      "linkedInPostUrl": "https://www.linkedin.com/in/varun-parlapalli/details/certifications/"
     },
     {
       "id": "cred-gcp-intro-genai",
@@ -421,7 +386,9 @@
       "isJourney": false,
       "featured": false,
       "order": 2,
-      "published": true
+      "published": true,
+      "linkedInPostUrl": "https://www.linkedin.com/in/varun-parlapalli/details/certifications/",
+      "verificationUrl": "https://www.skills.google/public_profiles/f6a4fb54-bba5-4304-a667-d20d42f57cc9/badges/16718434"
     },
     {
       "id": "cred-gcp-mlops-genai",
@@ -433,7 +400,9 @@
       "isJourney": false,
       "featured": false,
       "order": 3,
-      "published": true
+      "published": true,
+      "linkedInPostUrl": "https://www.linkedin.com/in/varun-parlapalli/details/certifications/",
+      "verificationUrl": "https://www.skills.google/public_profiles/f6a4fb54-bba5-4304-a667-d20d42f57cc9/badges/16768731"
     },
     {
       "id": "cred-ms-describe-cloud",
@@ -445,7 +414,9 @@
       "isJourney": false,
       "featured": false,
       "order": 4,
-      "published": true
+      "published": true,
+      "linkedInPostUrl": "https://www.linkedin.com/in/varun-parlapalli/details/certifications/",
+      "verificationUrl": "https://learn.microsoft.com/api/achievements/share/en-in/varunparlapalli-6991/D9A7CCWJ?sharingId=5B7BC7D484C1CC90"
     },
     {
       "id": "cred-ms-power-bi",
@@ -457,7 +428,9 @@
       "isJourney": false,
       "featured": false,
       "order": 5,
-      "published": true
+      "published": true,
+      "linkedInPostUrl": "https://www.linkedin.com/in/varun-parlapalli/details/certifications/",
+      "verificationUrl": "https://learn.microsoft.com/api/achievements/share/en-in/varunparlapalli-6991/W2TP68VN?sharingId=5B7BC7D484C1CC90"
     },
     {
       "id": "cred-hp-ai-beginners",
@@ -470,7 +443,9 @@
       "isJourney": false,
       "featured": true,
       "order": 6,
-      "published": true
+      "published": true,
+      "linkedInPostUrl": "https://www.linkedin.com/in/varun-parlapalli/details/certifications/",
+      "verificationUrl": "https://www.life-global.org/certificate/b6f06d82-76e0-429f-ad0a-16e7c936a563"
     },
     {
       "id": "cred-hp-cybersecurity",
@@ -483,7 +458,9 @@
       "isJourney": false,
       "featured": true,
       "order": 7,
-      "published": true
+      "published": true,
+      "linkedInPostUrl": "https://www.linkedin.com/in/varun-parlapalli/details/certifications/",
+      "verificationUrl": "https://www.life-global.org/certificate/5ba154da-42f9-445e-b6b4-dfbec15653d3"
     },
     {
       "id": "cred-hp-data-science",
@@ -496,7 +473,9 @@
       "isJourney": false,
       "featured": true,
       "order": 8,
-      "published": true
+      "published": true,
+      "linkedInPostUrl": "https://www.linkedin.com/in/varun-parlapalli/details/certifications/",
+      "verificationUrl": "https://www.life-global.org/certificate/bf081177-53c7-4ef3-ab23-566679db87ef"
     },
     {
       "id": "cred-draft-grad-guru",
@@ -522,7 +501,8 @@
       "isJourney": false,
       "featured": false,
       "order": 10,
-      "published": false
+      "published": false,
+      "linkedInPostUrl": "https://www.linkedin.com/in/varun-parlapalli/details/certifications/"
     },
     {
       "id": "cred-draft-windows-pi",
@@ -539,27 +519,19 @@
   ],
   "currentlyLearning": [
     {
-      "id": "learn-1789714145985",
-      "topic": "poojitha akka is great ",
-      "area": "Frontend Architecture",
+      "id": "learn-1789831178324",
+      "topic": "Backend integration",
+      "area": "full-stack development",
       "dated": "Active Exploration",
-      "notes": "Key focus points and practical experiments.",
+      "notes": "iam doing real time projects to get more experiance",
       "published": true
     },
     {
-      "id": "learn-1789815901847",
-      "topic": "vikranth is a good boy",
-      "area": "Frontend Architecture",
+      "id": "learn-1789831683249",
+      "topic": "kali linux",
+      "area": "cyber security",
       "dated": "Active Exploration",
-      "notes": "Key focus points and practical experiments.",
-      "published": true
-    },
-    {
-      "id": "learn-1789825783988",
-      "topic": "varunparlapalli",
-      "area": "Frontend Architecture",
-      "dated": "Active Exploration",
-      "notes": "Key focus points and practical experiments.",
+      "notes": "learning kali linux ",
       "published": true
     }
   ]
