@@ -58,6 +58,7 @@ export const metadata: Metadata = {
 import { AssistantProvider } from "@/components/ai/AssistantContext";
 import AssistantModal from "@/components/ai/AssistantModal";
 import FloatingAILauncher from "@/components/ai/FloatingAILauncher";
+import ScrollToTop from "@/components/ui/ScrollToTop";
 
 export default function RootLayout({
   children,
@@ -69,11 +70,22 @@ export default function RootLayout({
       lang="en"
       className={`${bodoni.variable} ${inter.variable} ${cormorant.variable} antialiased overflow-x-hidden`}
     >
+      <head>
+        {/*
+          Scroll reveals are driven by Framer Motion, which starts its elements
+          hidden. Without JavaScript they would never be told to appear, so
+          force every reveal visible in that case.
+        */}
+        <noscript>
+          <style>{`[data-reveal]{opacity:1!important;transform:none!important;filter:none!important}`}</style>
+        </noscript>
+      </head>
       <body className="min-h-screen bg-[#F7F4EE] text-[#20060B] selection:bg-[#590B20] selection:text-[#F7F4EE] overflow-x-hidden">
         <AssistantProvider>
           {children}
           <AssistantModal />
           <FloatingAILauncher />
+          <ScrollToTop />
         </AssistantProvider>
       </body>
     </html>

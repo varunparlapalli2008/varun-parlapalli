@@ -2,9 +2,9 @@
 
 import React, { useState } from "react";
 import { Mail, ArrowUpRight, Copy, Check } from "lucide-react";
-import { motion, useReducedMotion } from "framer-motion";
 import { PortfolioProfile } from "@/types/portfolio";
 import { FOCUS_RING } from "@/lib/motion";
+import { Reveal, RevealGroup, RevealItem, RevealHeading } from "@/components/ui/Reveal";
 
 interface ContactSectionProps {
   profile: PortfolioProfile;
@@ -12,7 +12,6 @@ interface ContactSectionProps {
 
 export default function ContactSection({ profile }: ContactSectionProps) {
   const [copied, setCopied] = useState(false);
-  const shouldReduceMotion = useReducedMotion();
 
   const handleCopyEmail = (e: React.MouseEvent) => {
     e.preventDefault();
@@ -30,33 +29,29 @@ export default function ContactSection({ profile }: ContactSectionProps) {
     >
       <div className="max-w-[1600px] mx-auto">
         {/* Section Header */}
-        <motion.div
-          initial={{ opacity: shouldReduceMotion ? 1 : 0, y: shouldReduceMotion ? 0 : 20 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true, margin: "-80px" }}
-          transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
-          className="flex flex-col lg:flex-row lg:items-end justify-between pb-10 mb-12 border-b border-[#D9CCB8]/80 gap-6"
-        >
+        <div className="flex flex-col lg:flex-row lg:items-end justify-between pb-10 mb-12 border-b border-[#D9CCB8]/80 gap-6">
           <div>
-            <div className="flex items-center gap-3 mb-3">
+            <Reveal variant="fade" className="flex items-center gap-3 mb-3">
               <span className="text-[11px] font-sans tracking-[0.24em] uppercase font-medium text-[#AC9062]">
                 INITIATE DIALOGUE
               </span>
-              <span className="w-8 h-[1px] bg-[#AC9062]" aria-hidden="true" />
-            </div>
-            <h2 className="font-display text-4xl sm:text-5xl font-normal leading-[1.05] text-[#20060B]">
-              Let&apos;s Build Thoughtful Systems Together.
-            </h2>
+              <span className="w-8 h-[1px] bg-[#AC9062] rule-draw" aria-hidden="true" />
+            </Reveal>
+            <RevealHeading
+              as="h2"
+              text={"Let's Build Thoughtful Systems Together."}
+              className="font-display text-4xl sm:text-5xl font-normal leading-[1.05] text-[#20060B]"
+            />
           </div>
-          <span className="font-display text-4xl sm:text-5xl text-[#AC9062]/30 leading-none select-none">
+          <Reveal variant="scale" delay={0.1} as="span" className="font-display text-4xl sm:text-5xl leading-none select-none gold-shimmer">
             06
-          </span>
-        </motion.div>
+          </Reveal>
+        </div>
 
         {/* Section Body */}
         <div className="space-y-10">
           {/* Context & Engagement Status */}
-          <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
+          <Reveal variant="up" className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
             <div className="max-w-2xl">
               <h3 className="font-display text-2xl text-[#20060B] mb-2">
                 Direct Communication
@@ -78,12 +73,12 @@ export default function ContactSection({ profile }: ContactSectionProps) {
                 </p>
               </div>
             </div>
-          </div>
+          </Reveal>
 
           {/* Verified Channels Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 font-sans">
+          <RevealGroup stagger={0.1} className="grid grid-cols-1 md:grid-cols-3 gap-6 font-sans">
             {/* Email Card with Copy Action */}
-            <div className="relative group flex flex-col justify-between p-6 bg-white rounded-xl border border-[#D9CCB8] hover:border-[#AC9062] hover:shadow-[0_12px_36px_rgba(89,11,32,0.06)] hover:-translate-y-1 active:translate-y-0 active:scale-[0.99] transition-all duration-200">
+            <RevealItem variant="up" className="relative group sheen flex flex-col justify-between p-6 bg-white rounded-xl border border-[#D9CCB8] hover:border-[#AC9062] hover:shadow-[0_16px_42px_rgba(89,11,32,0.09)] hover:-translate-y-1.5 active:translate-y-0 active:scale-[0.99] transition-all duration-300">
               <a
                 href={`mailto:${profile.contact.email}`}
                 className={`absolute inset-0 rounded-xl ${FOCUS_RING}`}
@@ -119,14 +114,15 @@ export default function ContactSection({ profile }: ContactSectionProps) {
                   {profile.contact.email}
                 </span>
               </div>
-            </div>
+            </RevealItem>
 
             {/* GitHub */}
+            <RevealItem variant="up">
             <a
               href={profile.contact.github}
               target="_blank"
               rel="noopener noreferrer"
-              className={`flex flex-col justify-between p-6 bg-white rounded-xl border border-[#D9CCB8] hover:border-[#AC9062] hover:shadow-[0_12px_36px_rgba(89,11,32,0.06)] hover:-translate-y-1 active:translate-y-0 active:scale-[0.99] transition-all duration-200 group min-w-0 ${FOCUS_RING}`}
+              className={`flex h-full flex-col justify-between p-6 bg-white rounded-xl border border-[#D9CCB8] hover:border-[#AC9062] hover:shadow-[0_16px_42px_rgba(89,11,32,0.09)] hover:-translate-y-1.5 active:translate-y-0 active:scale-[0.99] transition-all duration-300 group min-w-0 sheen ${FOCUS_RING}`}
             >
               <div className="flex items-center justify-between gap-4 mb-4">
                 <div className="w-10 h-10 rounded-lg bg-[#FAF8F3] border border-[#D9CCB8] flex items-center justify-center text-[#AC9062] group-hover:border-[#AC9062] group-hover:text-[#590B20] transition-colors">
@@ -145,13 +141,15 @@ export default function ContactSection({ profile }: ContactSectionProps) {
                 </span>
               </div>
             </a>
+            </RevealItem>
 
             {/* LinkedIn */}
+            <RevealItem variant="up">
             <a
               href={profile.contact.linkedin}
               target="_blank"
               rel="noopener noreferrer"
-              className={`flex flex-col justify-between p-6 bg-white rounded-xl border border-[#D9CCB8] hover:border-[#AC9062] hover:shadow-[0_12px_36px_rgba(89,11,32,0.06)] hover:-translate-y-1 active:translate-y-0 active:scale-[0.99] transition-all duration-200 group min-w-0 ${FOCUS_RING}`}
+              className={`flex h-full flex-col justify-between p-6 bg-white rounded-xl border border-[#D9CCB8] hover:border-[#AC9062] hover:shadow-[0_16px_42px_rgba(89,11,32,0.09)] hover:-translate-y-1.5 active:translate-y-0 active:scale-[0.99] transition-all duration-300 group min-w-0 sheen ${FOCUS_RING}`}
             >
               <div className="flex items-center justify-between gap-4 mb-4">
                 <div className="w-10 h-10 rounded-lg bg-[#FAF8F3] border border-[#D9CCB8] flex items-center justify-center text-[#AC9062] group-hover:border-[#AC9062] group-hover:text-[#590B20] transition-colors">
@@ -170,7 +168,8 @@ export default function ContactSection({ profile }: ContactSectionProps) {
                 </span>
               </div>
             </a>
-          </div>
+            </RevealItem>
+          </RevealGroup>
         </div>
       </div>
     </section>

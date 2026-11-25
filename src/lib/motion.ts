@@ -167,3 +167,135 @@ export function useFinePointerTilt() {
     onMouseLeave: handleMouseLeave
   };
 }
+
+/* ==========================================================================
+   SCROLL CHOREOGRAPHY & POINTER INTERACTION HOOKS
+   ========================================================================== */
+
+/** Single source of truth for "should this device animate at all?" */
+function prefersReducedMotion(): boolean {
+  if (typeof window === "undefined") return false;
+  return window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+}
+
+function isFinePointerDevice(): boolean {
+  if (typeof window === "undefined") return false;
+  return window.matchMedia("(hover: hover) and (pointer: fine)").matches;
+}
+
+/**
+ * Cursor-tracked warm spotlight for cards and panels.
+ *
+ * Writes `--spot-x` / `--spot-y` / `--spot-opacity` straight onto the node
+ * instead of going through React state, so pointer movement never triggers a
+ * re-render. Pair with the `.spotlight` class in globals.css.
+ */
+export function useSpotlight<T extends HTMLElement = HTMLDivElement>() {
+  const ref = useRef<T | null>(null);
+  const frame = useRef<number | null>(null);
+
+  const onMouseMove = useCallback((e: React.MouseEvent<T>) => {
+    const node = ref.current;
+    if (!node || !isFinePointerDevice() || prefersReducedMotion()) return;
+
+    const { clientX, clientY } = e;
+    if (frame.current !== null) return;
+
+    frame.current = window.requestAnimationFrame(() => {
+      frame.current = null;
+      const el = ref.current;
+      if (!el) return;
+      const rect = el.getBoundingClientRect();
+      el.style.setProperty("--spot-x", `${clientX - rect.left}px`);
+      el.style.setProperty("--spot-y", `${clientY - rect.top}px`);
+      el.style.setProperty("--spot-opacity", "1");
+    });
+  }, []);
+
+  const onMouseLeave = useCallback(() => {
+    if (frame.current !== null) {
+      window.cancelAnimationFrame(frame.current);
+      frame.current = null;
+    }
+    ref.current?.style.setProperty("--spot-opacity", "0");
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      if (frame.current !== null) window.cancelAnimationFrame(frame.current);
+    };
+  }, []);
+
+  return { ref, onMouseMove, onMouseLeave };
+}
+
+/**
+ * Magnetic pull for small interactive targets (buttons, icon links).
+ * The element drifts a few pixels toward the cursor and springs home on exit.
+ * Desktop fine-pointer only; a no-op under reduced motion.
+ */
+export function useMagnetic<T extends HTMLElement = HTMLButtonElement>(strength = 0.22, max = 8) {
+  const ref = useRef<T | null>(null);
+
+  const onMouseMove = useCallback(
+    (e: React.MouseEvent<T>) => {
+      const node = ref.current;
+      if (!node || !isFinePointerDevice() || prefersReducedMotion()) return;
+
+      const rect = node.getBoundingClientRect();
+      const dx = e.clientX - (rect.left + rect.width / 2);
+      const dy = e.clientY - (rect.top + rect.height / 2);
+
+      const clamp = (v: number) => Math.max(-max, Math.min(max, v * strength));
+      node.style.transform = `translate3d(${clamp(dx)}px, ${clamp(dy)}px, 0)`;
+      node.style.transition = "transform 0.1s linear";
+    },
+    [strength, max]
+  );
+
+  const onMouseLeave = useCallback(() => {
+    const node = ref.current;
+    if (!node) return;
+    node.style.transform = "translate3d(0, 0, 0)";
+    node.style.transition = "transform 0.45s cubic-bezier(0.22, 1, 0.36, 1)";
+  }, []);
+
+  return { ref, onMouseMove, onMouseLeave };
+}
+
+/**
+ * Reading progress for the whole document, smoothed and throttled to one
+ * read per animation frame to keep the scroll handler off the critical path.
+ */
+export function useScrollProgress() {
+  const [progress, setProgress] = useState(0);
+
+  useEffect(() => {
+    let raf: number | null = null;
+
+    const measure = () => {
+      raf = null;
+      const scrollable = document.documentElement.scrollHeight - window.innerHeight;
+      if (scrollable <= 0) {
+        setProgress(0);
+        return;
+      }
+      setProgress(Math.min(100, Math.max(0, (window.scrollY / scrollable) * 100)));
+    };
+
+    const onScroll = () => {
+      if (raf === null) raf = window.requestAnimationFrame(measure);
+    };
+
+    measure();
+    window.addEventListener("scroll", onScroll, { passive: true });
+    window.addEventListener("resize", onScroll, { passive: true });
+    return () => {
+      if (raf !== null) window.cancelAnimationFrame(raf);
+      window.removeEventListener("scroll", onScroll);
+      window.removeEventListener("resize", onScroll);
+    };
+  }, []);
+
+  return progress;
+}

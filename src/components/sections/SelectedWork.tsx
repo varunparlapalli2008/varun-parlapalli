@@ -6,7 +6,8 @@ import Image from "next/image";
 import { motion, useReducedMotion } from "framer-motion";
 import { ArrowRight, Layers, ArrowUpRight, Code, ExternalLink } from "lucide-react";
 import { Project } from "@/types/portfolio";
-import { useFinePointerTilt, FOCUS_RING } from "@/lib/motion";
+import { useFinePointerTilt, useSpotlight, FOCUS_RING } from "@/lib/motion";
+import { Reveal, RevealHeading } from "@/components/ui/Reveal";
 
 interface SelectedWorkProps {
   projects: Project[];
@@ -15,33 +16,54 @@ interface SelectedWorkProps {
 function ProjectCard({ project, idx }: { project: Project; idx: number }) {
   const shouldReduceMotion = useReducedMotion();
   const { ref, style, onMouseMove, onMouseLeave } = useFinePointerTilt();
+  const {
+    ref: spotlightRef,
+    onMouseMove: onSpotlightMove,
+    onMouseLeave: onSpotlightLeave,
+  } = useSpotlight<HTMLElement>();
+
+  // One pointer stream drives both the warm glow and the 1–2 degree tilt.
+  const handleMove = (e: React.MouseEvent<HTMLElement>) => {
+    onSpotlightMove(e);
+    onMouseMove(e as React.MouseEvent<HTMLDivElement>);
+  };
+
+  const handleLeave = () => {
+    onSpotlightLeave();
+    onMouseLeave();
+  };
 
   return (
     <motion.article
-      initial={{ opacity: shouldReduceMotion ? 1 : 0, y: shouldReduceMotion ? 0 : 25 }}
-      whileInView={{ opacity: 1, y: 0 }}
+      ref={spotlightRef}
+      onMouseMove={handleMove}
+      onMouseLeave={handleLeave}
+      initial={
+        shouldReduceMotion
+          ? { opacity: 1 }
+          : { opacity: 0, y: 34, filter: "blur(7px)" }
+      }
+      whileInView={{ opacity: 1, y: 0, filter: "blur(0px)" }}
       viewport={{ once: true, margin: "-60px" }}
       transition={{
-        duration: 0.5,
-        delay: shouldReduceMotion ? 0 : idx * 0.1,
+        duration: 0.6,
+        delay: shouldReduceMotion ? 0 : idx * 0.11,
         ease: [0.22, 1, 0.36, 1]
       }}
-      className="group relative flex flex-col justify-between rounded-xl sm:rounded-2xl border border-[#D9CCB8] bg-white p-7 shadow-[0_8px_30px_rgba(89,11,32,0.04)] hover:shadow-[0_18px_44px_rgba(89,11,32,0.1)] hover:border-[#AC9062] hover:-translate-y-1 active:translate-y-0 active:scale-[0.99] transition-all duration-300"
+      className="group spotlight relative flex flex-col justify-between rounded-xl sm:rounded-2xl border border-[#D9CCB8] bg-white p-7 shadow-[0_8px_30px_rgba(89,11,32,0.04)] hover:shadow-[0_22px_50px_rgba(89,11,32,0.12)] hover:border-[#AC9062] hover:-translate-y-1.5 active:translate-y-0 active:scale-[0.99] transition-[transform,box-shadow,border-color] duration-500 ease-out"
     >
+      {/* Accessible Full-Card Primary Navigation Link */}
+      <Link
+        href={`/projects/${project.slug}`}
+        className={`absolute inset-0 z-10 rounded-xl sm:rounded-2xl ${FOCUS_RING}`}
+        aria-label={`Read case study: ${project.title}`}
+      />
+
       <div
         ref={ref}
         style={shouldReduceMotion ? undefined : style}
-        onMouseMove={onMouseMove}
-        onMouseLeave={onMouseLeave}
-        className="flex flex-col justify-between h-full"
+        className="relative flex flex-col justify-between h-full"
       >
-        {/* Accessible Full-Card Primary Navigation Link */}
-        <Link
-          href={`/projects/${project.slug}`}
-          className={`absolute inset-0 z-10 rounded-xl sm:rounded-2xl ${FOCUS_RING}`}
-          aria-label={`Read case study: ${project.title}`}
-        />
-
         <div>
           {/* Top Meta */}
           <div className="flex items-center justify-between pb-4 mb-4 border-b border-[#E8DFD1] text-xs font-sans">
@@ -60,7 +82,7 @@ function ProjectCard({ project, idx }: { project: Project; idx: number }) {
                 src={project.authenticPreviewUrl}
                 alt={`${project.title} preview`}
                 fill
-                className="object-cover group-hover:scale-105 transition-transform duration-500 ease-out"
+                className="object-cover group-hover:scale-[1.08] transition-transform duration-700 ease-out"
                 sizes="(max-width: 768px) 100vw, 400px"
               />
             ) : (
@@ -75,15 +97,25 @@ function ProjectCard({ project, idx }: { project: Project; idx: number }) {
               </div>
             )}
             {/* Subtle index tag */}
-            <div className="absolute top-2 left-2 px-2 py-0.5 rounded bg-[#20060B]/70 text-white font-mono text-[10px] backdrop-blur-xs">
+            <div className="absolute top-2 left-2 px-2 py-0.5 rounded bg-[#20060B]/70 text-white font-mono text-[10px] backdrop-blur-xs transition-all duration-300 group-hover:bg-[#590B20] group-hover:px-2.5">
               0{idx + 1}
             </div>
+
+            {/* Warm wash that lifts the thumbnail on hover */}
+            <div
+              className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500 bg-gradient-to-t from-[#20060B]/25 via-transparent to-transparent pointer-events-none"
+              aria-hidden="true"
+            />
           </div>
 
           {/* Title and Tagline */}
-          <h3 className="font-display text-2xl font-normal text-[#20060B] mb-2 group-hover:text-[#590B20] transition-colors">
+          <h3 className="font-display text-2xl font-normal text-[#20060B] mb-2 group-hover:text-[#590B20] transition-colors duration-300">
             {project.title}
           </h3>
+          <span
+            className="block h-[1px] w-0 bg-[#AC9062] mb-2 transition-[width] duration-500 ease-out group-hover:w-14"
+            aria-hidden="true"
+          />
           <p className="text-sm text-[#68626B] font-editorial leading-relaxed mb-4 line-clamp-3">
             {project.tagline}
           </p>
@@ -161,7 +193,6 @@ function ProjectCard({ project, idx }: { project: Project; idx: number }) {
 
 export default function SelectedWork({ projects }: SelectedWorkProps) {
   const featuredProjects = projects.filter((p) => p.featured);
-  const shouldReduceMotion = useReducedMotion();
 
   return (
     <section
@@ -170,43 +201,39 @@ export default function SelectedWork({ projects }: SelectedWorkProps) {
     >
       <div className="max-w-[1600px] mx-auto">
         {/* Section Header */}
-        <motion.div
-          initial={{ opacity: shouldReduceMotion ? 1 : 0, y: shouldReduceMotion ? 0 : 20 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true, margin: "-80px" }}
-          transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
-          className="flex flex-col lg:flex-row lg:items-end justify-between pb-12 mb-12 border-b border-[#D9CCB8]/80 gap-6"
-        >
+        <div className="flex flex-col lg:flex-row lg:items-end justify-between pb-12 mb-12 border-b border-[#D9CCB8]/80 gap-6">
           <div className="max-w-2xl">
-            <div className="flex items-center gap-3 mb-3">
+            <Reveal variant="fade" className="flex items-center gap-3 mb-3">
               <span className="text-[11px] font-sans tracking-[0.24em] uppercase font-medium text-[#AC9062]">
                 SELECTED WORK
               </span>
-              <span className="w-8 h-[1px] bg-[#AC9062]" aria-hidden="true" />
-            </div>
-            <h2 className="font-display text-4xl sm:text-5xl lg:text-[56px] font-normal leading-[1.05] text-[#20060B]">
-              Projects that turn ideas into reality.
-            </h2>
+              <span className="w-8 h-[1px] bg-[#AC9062] rule-draw" aria-hidden="true" />
+            </Reveal>
+            <RevealHeading
+              as="h2"
+              text="Projects that turn ideas into reality."
+              className="font-display text-4xl sm:text-5xl lg:text-[56px] font-normal leading-[1.05] text-[#20060B]"
+            />
           </div>
 
-          <div className="flex items-end justify-between lg:justify-end gap-8">
+          <Reveal variant="up" delay={0.12} className="flex items-end justify-between lg:justify-end gap-8">
             <div className="max-w-xs text-sm text-[#68626B] font-editorial leading-relaxed hidden sm:block">
               A curated selection of work where design meets practical, real-world impact.
             </div>
             <div className="flex flex-col items-end gap-2">
-              <span className="font-display text-4xl sm:text-5xl text-[#AC9062]/30 leading-none select-none">
+              <span className="font-display text-4xl sm:text-5xl leading-none select-none gold-shimmer">
                 01
               </span>
               <Link
                 href="/projects"
                 className={`group inline-flex items-center gap-1.5 text-sm font-sans font-medium text-[#590B20] hover:text-[#20060B] transition-colors ${FOCUS_RING} rounded`}
               >
-                <span>View All Projects</span>
-                <ArrowRight className="w-4 h-4 transition-transform duration-200 group-hover:translate-x-1" />
+                <span className="link-sweep">View All Projects</span>
+                <ArrowRight className="w-4 h-4 transition-transform duration-300 group-hover:translate-x-1.5" />
               </Link>
             </div>
-          </div>
-        </motion.div>
+          </Reveal>
+        </div>
 
         {/* Projects Editorial Grid with Staggered Scroll Reveal & 1-2° Tilt on desktop */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">

@@ -12,6 +12,7 @@ import {
 import { Skill } from "@/types/portfolio";
 import { INITIAL_SKILLS } from "@/lib/initial-data";
 import { COMPETENCY_CATEGORIES, CompetencySkill } from "@/lib/competencies-data";
+import { Reveal, RevealHeading } from "@/components/ui/Reveal";
 
 interface SkillsGridProps {
   skills?: Skill[];
@@ -165,23 +166,25 @@ export default function SkillsGrid({ skills }: SkillsGridProps) {
         {/* Section Header */}
         <div className="flex flex-col lg:flex-row lg:items-end justify-between pb-10 mb-12 border-b border-[#D9CCB8]/80 gap-6">
           <div>
-            <div className="flex items-center gap-3 mb-3">
+            <Reveal variant="fade" className="flex items-center gap-3 mb-3">
               <span className="text-[11px] font-sans tracking-[0.24em] uppercase font-medium text-[#AC9062]">
                 TECHNICAL COMPETENCIES
               </span>
-              <span className="w-8 h-[1px] bg-[#AC9062]" aria-hidden="true" />
-            </div>
-            <h2 className="font-display text-4xl sm:text-5xl font-normal leading-[1.05] text-[#20060B]">
-              Skills Grounded in Practice &amp; Projects.
-            </h2>
+              <span className="w-8 h-[1px] bg-[#AC9062] rule-draw" aria-hidden="true" />
+            </Reveal>
+            <RevealHeading
+              as="h2"
+              text={"Skills Grounded in Practice & Projects."}
+              className="font-display text-4xl sm:text-5xl font-normal leading-[1.05] text-[#20060B]"
+            />
           </div>
-          <span className="font-display text-4xl sm:text-5xl text-[#AC9062]/30 leading-none select-none">
+          <Reveal variant="scale" delay={0.1} as="span" className="font-display text-4xl sm:text-5xl leading-none select-none gold-shimmer">
             04
-          </span>
+          </Reveal>
         </div>
 
         {/* Mobile & Tablet Category Tabs (Horizontally scrollable) */}
-        <div className="lg:hidden mb-8">
+        <Reveal variant="up" className="lg:hidden mb-8">
           <div className="text-[10px] font-sans tracking-[0.2em] uppercase font-semibold text-[#AC9062] mb-3">
             Select Discipline
           </div>
@@ -200,7 +203,7 @@ export default function SkillsGrid({ skills }: SkillsGridProps) {
                   aria-selected={isActive}
                   aria-controls={`competency-panel-${cat.id}`}
                   onClick={() => handleCategoryChange(cat.id)}
-                  className={`shrink-0 min-h-[44px] px-4 py-2 rounded-full text-xs font-sans transition-all flex items-center gap-2 snap-start cursor-pointer focus-visible:ring-2 focus-visible:ring-[#590B20] focus-visible:outline-none ${
+                  className={`shrink-0 min-h-[44px] px-4 py-2 rounded-full text-xs font-sans transition-all duration-300 active:scale-95 flex items-center gap-2 snap-start cursor-pointer focus-visible:ring-2 focus-visible:ring-[#590B20] focus-visible:outline-none ${
                     isActive
                       ? "bg-[#590B20] text-white font-semibold shadow-sm border border-[#590B20]"
                       : "bg-white text-[#68626B] hover:text-[#20060B] border border-[#D9CCB8]"
@@ -218,12 +221,12 @@ export default function SkillsGrid({ skills }: SkillsGridProps) {
               );
             })}
           </div>
-        </div>
+        </Reveal>
 
         {/* Editorial Competency Layout: 30/70 Two-Column Desktop Split */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 lg:gap-14 items-start">
           {/* Left Column: Sticky Category Navigator (Desktop) */}
-          <aside className="hidden lg:block lg:col-span-4 xl:col-span-3">
+          <Reveal variant="left" as="aside" className="hidden lg:block lg:col-span-4 xl:col-span-3">
             <div className="sticky top-28 space-y-2 pr-6 border-r border-[#E8DFD1]">
               <div className="text-[10px] font-sans tracking-[0.24em] uppercase font-semibold text-[#AC9062] mb-4">
                 Disciplines Index
@@ -243,10 +246,10 @@ export default function SkillsGrid({ skills }: SkillsGridProps) {
                       aria-selected={isActive}
                       aria-controls={`competency-panel-${cat.id}`}
                       onClick={() => handleCategoryChange(cat.id)}
-                      className={`w-full text-left py-3 px-3.5 rounded-lg transition-all relative flex items-center justify-between group cursor-pointer focus-visible:ring-2 focus-visible:ring-[#590B20] focus-visible:outline-none ${
+                      className={`w-full text-left py-3 px-3.5 rounded-lg transition-all duration-300 relative flex items-center justify-between group cursor-pointer focus-visible:ring-2 focus-visible:ring-[#590B20] focus-visible:outline-none ${
                         isActive
-                          ? "text-[#590B20] font-semibold bg-[#590B20]/5"
-                          : "text-[#68626B] hover:text-[#20060B] hover:bg-[#20060B]/[0.02] font-normal"
+                          ? "text-[#590B20] font-semibold bg-[#590B20]/5 translate-x-1"
+                          : "text-[#68626B] hover:text-[#20060B] hover:bg-[#20060B]/[0.02] hover:translate-x-1 font-normal"
                       }`}
                     >
                       <div className="flex items-center gap-3">
@@ -282,7 +285,7 @@ export default function SkillsGrid({ skills }: SkillsGridProps) {
                 </p>
               </div>
             </div>
-          </aside>
+          </Reveal>
 
           {/* Right Column: Full-Width Editorial Competency Rows */}
           <main className="lg:col-span-8 xl:col-span-9">
@@ -292,10 +295,10 @@ export default function SkillsGrid({ skills }: SkillsGridProps) {
                 id={`competency-panel-${activeCategory.id}`}
                 role="tabpanel"
                 aria-labelledby={`tab-${activeCategory.id}`}
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -10 }}
-                transition={{ duration: 0.22, ease: "easeInOut" }}
+                initial={{ opacity: 0, y: 14, filter: "blur(5px)" }}
+                animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
+                exit={{ opacity: 0, y: -10, filter: "blur(5px)" }}
+                transition={{ duration: 0.28, ease: [0.22, 1, 0.36, 1] }}
                 className="space-y-0"
               >
                 {/* Discipline Header Banner */}
@@ -321,7 +324,7 @@ export default function SkillsGrid({ skills }: SkillsGridProps) {
                     return (
                       <div
                         key={skill.id}
-                        className="py-6 transition-colors group"
+                        className="py-6 -mx-3 px-3 rounded-lg transition-colors duration-300 hover:bg-[#AC9062]/[0.045] group"
                       >
                         {/* Interactive Row Header */}
                         <button

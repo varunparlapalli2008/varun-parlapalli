@@ -20,6 +20,7 @@ import {
 } from "lucide-react";
 import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 import { Achievement, Credential } from "@/types/portfolio";
+import { Reveal, RevealGroup, RevealItem } from "@/components/ui/Reveal";
 import { DisplayRecord } from "./AchievementsSection";
 
 interface AchievementsArchiveViewProps {
@@ -149,10 +150,10 @@ export default function AchievementsArchiveView({
   return (
     <div className="w-full">
       {/* Category Metric Strip */}
-      <div className="mb-10 py-4 px-6 bg-white rounded-2xl border border-[#D9CCB8] shadow-xs">
-        <div className="grid grid-cols-2 sm:grid-cols-4 divide-y sm:divide-y-0 sm:divide-x divide-[#D9CCB8]/70">
-          <div className="py-2 sm:py-0 sm:px-4 first:pl-0 flex items-center gap-3">
-            <Trophy className="w-4 h-4 text-[#AC9062] shrink-0" />
+      <Reveal variant="up" className="mb-10 py-4 px-6 bg-white rounded-2xl border border-[#D9CCB8] shadow-xs transition-shadow duration-500 hover:shadow-[0_14px_36px_rgba(89,11,32,0.07)]">
+        <RevealGroup stagger={0.07} className="grid grid-cols-2 sm:grid-cols-4 divide-y sm:divide-y-0 sm:divide-x divide-[#D9CCB8]/70">
+          <RevealItem variant="scale" className="py-2 sm:py-0 sm:px-4 first:pl-0 flex items-center gap-3 group/stat">
+            <Trophy className="w-4 h-4 text-[#AC9062] shrink-0 transition-transform duration-500 ease-out group-hover/stat:scale-125" />
             <div>
               <div className="font-mono text-lg font-bold text-[#590B20]">
                 {String(counts.achCount).padStart(2, "0")}
@@ -161,10 +162,10 @@ export default function AchievementsArchiveView({
                 Hackathon Placements
               </div>
             </div>
-          </div>
+          </RevealItem>
 
-          <div className="py-2 sm:py-0 sm:px-4 flex items-center gap-3">
-            <Award className="w-4 h-4 text-[#AC9062] shrink-0" />
+          <RevealItem variant="scale" className="py-2 sm:py-0 sm:px-4 flex items-center gap-3 group/stat">
+            <Award className="w-4 h-4 text-[#AC9062] shrink-0 transition-transform duration-500 ease-out group-hover/stat:scale-125" />
             <div>
               <div className="font-mono text-lg font-bold text-[#590B20]">
                 {String(counts.certCount).padStart(2, "0")}
@@ -173,10 +174,10 @@ export default function AchievementsArchiveView({
                 Certificates
               </div>
             </div>
-          </div>
+          </RevealItem>
 
-          <div className="py-2 sm:py-0 sm:px-4 flex items-center gap-3">
-            <BookOpen className="w-4 h-4 text-[#AC9062] shrink-0" />
+          <RevealItem variant="scale" className="py-2 sm:py-0 sm:px-4 flex items-center gap-3 group/stat">
+            <BookOpen className="w-4 h-4 text-[#AC9062] shrink-0 transition-transform duration-500 ease-out group-hover/stat:scale-125" />
             <div>
               <div className="font-mono text-lg font-bold text-[#590B20]">
                 {String(counts.courseCount).padStart(2, "0")}
@@ -185,10 +186,10 @@ export default function AchievementsArchiveView({
                 Courses &amp; Modules
               </div>
             </div>
-          </div>
+          </RevealItem>
 
-          <div className="py-2 sm:py-0 sm:px-4 last:pr-0 flex items-center gap-3">
-            <Compass className="w-4 h-4 text-[#AC9062] shrink-0" />
+          <RevealItem variant="scale" className="py-2 sm:py-0 sm:px-4 last:pr-0 flex items-center gap-3 group/stat">
+            <Compass className="w-4 h-4 text-[#AC9062] shrink-0 transition-transform duration-500 ease-out group-hover/stat:scale-125" />
             <div>
               <div className="font-mono text-lg font-bold text-[#590B20]">
                 {String(counts.journeyCount).padStart(2, "0")}
@@ -197,9 +198,9 @@ export default function AchievementsArchiveView({
                 Learning Journeys
               </div>
             </div>
-          </div>
-        </div>
-      </div>
+          </RevealItem>
+        </RevealGroup>
+      </Reveal>
 
       {/* Filter Tabs */}
       <div className="mb-8 border-b border-[#D9CCB8]">
@@ -259,10 +260,18 @@ export default function AchievementsArchiveView({
           transition={{ duration: 0.22 }}
           className="grid grid-cols-1 md:grid-cols-2 gap-6"
         >
-          {filteredRecords.map((record) => (
-            <div
+          {filteredRecords.map((record, index) => (
+            <motion.div
               key={record.id}
-              className="p-7 bg-white rounded-2xl border border-[#D9CCB8] shadow-xs hover:border-[#AC9062] transition-all flex flex-col justify-between group"
+              initial={shouldReduceMotion ? { opacity: 1 } : { opacity: 0, y: 18 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{
+                duration: shouldReduceMotion ? 0 : 0.45,
+                // Cap the cascade so long archives never feel slow to load
+                delay: shouldReduceMotion ? 0 : Math.min(index * 0.05, 0.5),
+                ease: [0.22, 1, 0.36, 1],
+              }}
+              className="p-7 bg-white rounded-2xl border border-[#D9CCB8] shadow-xs flex flex-col justify-between group lift"
             >
               <div>
                 {/* Top Badge & Date Row */}
@@ -367,7 +376,7 @@ export default function AchievementsArchiveView({
                   </button>
                 </div>
               </div>
-            </div>
+            </motion.div>
           ))}
         </motion.div>
       </AnimatePresence>
@@ -375,10 +384,14 @@ export default function AchievementsArchiveView({
       {/* Record Preview Modal */}
       <AnimatePresence>
         {previewRecord && (
-          <div 
+          <motion.div
             role="dialog"
             aria-modal="true"
             aria-labelledby="archive-modal-title"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: shouldReduceMotion ? 0 : 0.2, ease: "easeOut" }}
             className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs"
             onClick={() => setPreviewRecord(null)}
           >
@@ -474,7 +487,7 @@ export default function AchievementsArchiveView({
                 </div>
               </div>
             </motion.div>
-          </div>
+          </motion.div>
         )}
       </AnimatePresence>
     </div>

@@ -19,6 +19,7 @@ import {
 } from "lucide-react";
 import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 import { Achievement, Credential } from "@/types/portfolio";
+import { Reveal, RevealGroup, RevealItem, RevealHeading } from "@/components/ui/Reveal";
 
 interface AchievementsSectionProps {
   achievements?: Achievement[];
@@ -187,42 +188,44 @@ export default function AchievementsSection({
         {/* Section Header */}
         <div className="flex flex-col lg:flex-row lg:items-end justify-between pb-8 mb-6 border-b border-[#D9CCB8]/80 gap-6">
           <div>
-            <div className="flex items-center gap-3 mb-3">
+            <Reveal variant="fade" className="flex items-center gap-3 mb-3">
               <span className="text-[11px] font-sans tracking-[0.24em] uppercase font-medium text-[#AC9062]">
                 VALIDATED MILESTONES
               </span>
-              <span className="w-8 h-[1px] bg-[#AC9062]" aria-hidden="true" />
-            </div>
-            <h2 className="font-display text-4xl sm:text-5xl font-normal leading-[1.05] text-[#20060B]">
-              Achievements &amp; Credentials.
-            </h2>
+              <span className="w-8 h-[1px] bg-[#AC9062] rule-draw" aria-hidden="true" />
+            </Reveal>
+            <RevealHeading
+              as="h2"
+              text={"Achievements & Credentials."}
+              className="font-display text-4xl sm:text-5xl font-normal leading-[1.05] text-[#20060B]"
+            />
           </div>
-          <div className="flex items-center gap-6">
-            <span className="font-display text-4xl sm:text-5xl text-[#AC9062]/30 leading-none select-none">
+          <Reveal variant="up" delay={0.1} className="flex items-center gap-6">
+            <span className="font-display text-4xl sm:text-5xl leading-none select-none gold-shimmer">
               05
             </span>
             <Link
               href="/achievements"
-              className="group inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-[#590B20] text-white text-xs font-sans font-semibold hover:bg-[#20060B] transition-colors shadow-xs"
+              className="group sheen inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-[#590B20] text-white text-xs font-sans font-semibold hover:bg-[#20060B] hover:-translate-y-0.5 hover:shadow-[0_10px_26px_rgba(89,11,32,0.22)] active:translate-y-0 transition-all duration-300 shadow-xs"
             >
               <span>View All Achievements &amp; Credentials</span>
-              <ArrowRight className="w-3.5 h-3.5 transition-transform group-hover:translate-x-1" />
+              <ArrowRight className="w-3.5 h-3.5 transition-transform duration-300 group-hover:translate-x-1.5" />
             </Link>
-          </div>
+          </Reveal>
         </div>
 
         {/* Section Introduction */}
-        <div className="max-w-3xl mb-10">
+        <Reveal variant="up" className="max-w-3xl mb-10">
           <p className="text-base text-[#68626B] font-editorial leading-relaxed">
             Verified record of competitive hackathon placements, recognized certificates of completion, foundational courses, and structured learning journeys. Each record represents practical engineering rigor with zero simulated claims.
           </p>
-        </div>
+        </Reveal>
 
         {/* Minimal Summary Strip */}
-        <div className="mb-10 py-4 px-6 bg-white/80 rounded-xl border border-[#D9CCB8]/80 shadow-xs">
-          <div className="grid grid-cols-2 sm:grid-cols-4 divide-y sm:divide-y-0 sm:divide-x divide-[#D9CCB8]/70">
-            <div className="py-2 sm:py-0 sm:px-4 first:pl-0 flex items-center gap-3">
-              <Trophy className="w-4 h-4 text-[#AC9062] shrink-0" />
+        <Reveal variant="up" delay={0.06} className="mb-10 py-4 px-6 bg-white/80 rounded-xl border border-[#D9CCB8]/80 shadow-xs transition-shadow duration-500 hover:shadow-[0_14px_36px_rgba(89,11,32,0.07)]">
+          <RevealGroup stagger={0.07} className="grid grid-cols-2 sm:grid-cols-4 divide-y sm:divide-y-0 sm:divide-x divide-[#D9CCB8]/70">
+            <RevealItem variant="scale" className="py-2 sm:py-0 sm:px-4 first:pl-0 flex items-center gap-3 group/stat">
+              <Trophy className="w-4 h-4 text-[#AC9062] shrink-0 transition-transform duration-500 ease-out group-hover/stat:scale-125" />
               <div>
                 <div className="font-mono text-lg font-bold text-[#590B20]">
                   {String(counts.achCount).padStart(2, "0")}
@@ -231,10 +234,10 @@ export default function AchievementsSection({
                   Hackathon Placements
                 </div>
               </div>
-            </div>
+            </RevealItem>
 
-            <div className="py-2 sm:py-0 sm:px-4 flex items-center gap-3">
-              <Award className="w-4 h-4 text-[#AC9062] shrink-0" />
+            <RevealItem variant="scale" className="py-2 sm:py-0 sm:px-4 flex items-center gap-3 group/stat">
+              <Award className="w-4 h-4 text-[#AC9062] shrink-0 transition-transform duration-500 ease-out group-hover/stat:scale-125" />
               <div>
                 <div className="font-mono text-lg font-bold text-[#590B20]">
                   {String(counts.certCount).padStart(2, "0")}
@@ -243,10 +246,10 @@ export default function AchievementsSection({
                   Certificates
                 </div>
               </div>
-            </div>
+            </RevealItem>
 
-            <div className="py-2 sm:py-0 sm:px-4 flex items-center gap-3">
-              <BookOpen className="w-4 h-4 text-[#AC9062] shrink-0" />
+            <RevealItem variant="scale" className="py-2 sm:py-0 sm:px-4 flex items-center gap-3 group/stat">
+              <BookOpen className="w-4 h-4 text-[#AC9062] shrink-0 transition-transform duration-500 ease-out group-hover/stat:scale-125" />
               <div>
                 <div className="font-mono text-lg font-bold text-[#590B20]">
                   {String(counts.courseCount).padStart(2, "0")}
@@ -255,10 +258,10 @@ export default function AchievementsSection({
                   Courses &amp; Modules
                 </div>
               </div>
-            </div>
+            </RevealItem>
 
-            <div className="py-2 sm:py-0 sm:px-4 last:pr-0 flex items-center gap-3">
-              <Compass className="w-4 h-4 text-[#AC9062] shrink-0" />
+            <RevealItem variant="scale" className="py-2 sm:py-0 sm:px-4 last:pr-0 flex items-center gap-3 group/stat">
+              <Compass className="w-4 h-4 text-[#AC9062] shrink-0 transition-transform duration-500 ease-out group-hover/stat:scale-125" />
               <div>
                 <div className="font-mono text-lg font-bold text-[#590B20]">
                   {String(counts.journeyCount).padStart(2, "0")}
@@ -267,9 +270,9 @@ export default function AchievementsSection({
                   Learning Journeys
                 </div>
               </div>
-            </div>
-          </div>
-        </div>
+            </RevealItem>
+          </RevealGroup>
+        </Reveal>
 
         {/* Category Navigation Tabs */}
         <div className="mb-8 border-b border-[#D9CCB8]">
@@ -292,7 +295,7 @@ export default function AchievementsSection({
                   role="tab"
                   aria-selected={isActive}
                   onClick={() => setActiveFilter(tab.id)}
-                  className={`relative py-3.5 text-xs sm:text-sm font-sans tracking-tight transition-colors cursor-pointer whitespace-nowrap focus-visible:ring-2 focus-visible:ring-[#590B20] focus-visible:outline-none flex items-center gap-2 ${
+                  className={`relative py-3.5 text-xs sm:text-sm font-sans tracking-tight transition-all duration-200 active:scale-95 cursor-pointer whitespace-nowrap focus-visible:ring-2 focus-visible:ring-[#590B20] focus-visible:outline-none flex items-center gap-2 ${
                     isActive 
                       ? "text-[#590B20] font-semibold" 
                       : "text-[#68626B] hover:text-[#20060B] font-normal"
@@ -331,9 +334,17 @@ export default function AchievementsSection({
           >
             {filteredRecords.map((record, index) => {
               return (
-                <div
+                <motion.div
                   key={record.id}
-                  className="py-7 transition-colors hover:bg-black/[0.015] group px-3 sm:px-5 rounded-xl -mx-3 sm:-mx-5"
+                  initial={shouldReduceMotion ? { opacity: 1 } : { opacity: 0, y: 14 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{
+                    duration: shouldReduceMotion ? 0 : 0.42,
+                    // Cap the cascade so long ledgers never feel slow to load
+                    delay: shouldReduceMotion ? 0 : Math.min(index * 0.045, 0.5),
+                    ease: [0.22, 1, 0.36, 1],
+                  }}
+                  className="py-7 transition-colors duration-300 hover:bg-[#AC9062]/[0.05] group px-3 sm:px-5 rounded-xl -mx-3 sm:-mx-5"
                 >
                   <div className="grid grid-cols-1 md:grid-cols-12 gap-5 md:gap-8 items-start">
                     {/* Left Column: Number, Date, Category Badge */}
@@ -437,14 +448,14 @@ export default function AchievementsSection({
                       </div>
                     </div>
                   </div>
-                </div>
+                </motion.div>
               );
             })}
           </motion.div>
         </AnimatePresence>
 
         {/* Bottom Banner linking to full archive */}
-        <div className="mt-12 pt-8 border-t border-[#D9CCB8]/80 flex flex-col sm:flex-row items-center justify-between gap-4">
+        <Reveal variant="up" className="mt-12 pt-8 border-t border-[#D9CCB8]/80 flex flex-col sm:flex-row items-center justify-between gap-4">
           <div className="text-xs text-[#68626B] font-sans text-center sm:text-left">
             Showing all {filteredRecords.length} published milestones in this view.
           </div>
@@ -453,17 +464,21 @@ export default function AchievementsSection({
             className="inline-flex items-center gap-2 text-xs font-sans font-semibold text-[#590B20] hover:text-[#20060B] transition-colors group"
           >
             <span>Explore Complete Archive &amp; Verification Directory</span>
-            <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-1" />
+            <ArrowRight className="w-4 h-4 transition-transform duration-300 group-hover:translate-x-1.5" />
           </Link>
-        </div>
+        </Reveal>
 
         {/* Credential Details Modal */}
         <AnimatePresence>
           {previewRecord && (
-            <div 
+            <motion.div
               role="dialog"
               aria-modal="true"
               aria-labelledby="modal-record-title"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: shouldReduceMotion ? 0 : 0.2, ease: "easeOut" }}
               className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs"
               onClick={() => setPreviewRecord(null)}
             >
@@ -559,7 +574,7 @@ export default function AchievementsSection({
                   </div>
                 </div>
               </motion.div>
-            </div>
+            </motion.div>
           )}
         </AnimatePresence>
       </div>

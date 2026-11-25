@@ -1,11 +1,12 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useRef } from "react";
 import Link from "next/link";
-import { MapPin, Sparkles, Send, ArrowRight } from "lucide-react";
+import { MapPin, Sparkles, Send, ArrowRight, ChevronDown } from "lucide-react";
+import { motion, useScroll, useTransform, useReducedMotion } from "framer-motion";
 import { useAssistant } from "../ai/AssistantContext";
 import ArchitecturalArtwork from "./ArchitecturalArtwork";
-import { useAmbientAnimation, FOCUS_RING } from "@/lib/motion";
+import { useAmbientAnimation, useMagnetic, FOCUS_RING } from "@/lib/motion";
 import { PortfolioProfile } from "@/types/portfolio";
 
 interface FullWidthHeroProps {
@@ -16,6 +17,32 @@ export default function FullWidthHero({ profile }: FullWidthHeroProps) {
   const { openAssistant } = useAssistant();
   const [query, setQuery] = useState("");
   const isAmbientActive = useAmbientAnimation();
+  const shouldReduceMotion = useReducedMotion();
+
+  const sectionRef = useRef<HTMLElement | null>(null);
+  const { scrollYProgress } = useScroll({
+    target: sectionRef,
+    offset: ["start start", "end start"],
+  });
+
+  // The linework drifts slower than the page, and the copy settles back a
+  // touch as the reader leaves — a shallow depth cue, not a parallax stunt.
+  const artworkY = useTransform(scrollYProgress, [0, 1], ["0%", "22%"]);
+  const artworkScale = useTransform(scrollYProgress, [0, 1], [1, 1.1]);
+  const contentY = useTransform(scrollYProgress, [0, 1], [0, -48]);
+  const contentOpacity = useTransform(scrollYProgress, [0, 0.72], [1, 0]);
+
+  const {
+    ref: primaryCtaRef,
+    onMouseMove: onPrimaryCtaMove,
+    onMouseLeave: onPrimaryCtaLeave,
+  } = useMagnetic<HTMLAnchorElement>(0.16, 5);
+
+  const {
+    ref: secondaryCtaRef,
+    onMouseMove: onSecondaryCtaMove,
+    onMouseLeave: onSecondaryCtaLeave,
+  } = useMagnetic<HTMLButtonElement>(0.16, 5);
 
   const rawName = (profile?.name || "PARLAPALLI VARUN").trim();
   const nameParts = rawName.split(/\s+/);
@@ -38,15 +65,32 @@ export default function FullWidthHero({ profile }: FullWidthHeroProps) {
 
   return (
     <section
+      ref={sectionRef}
       id="top"
       className="relative w-full min-h-[calc(100svh-72px)] flex flex-col justify-between py-8 sm:py-12 px-6 lg:px-16 bg-[#F7F4EE] paper-grain border-b border-[#D9CCB8] overflow-hidden"
     >
       {/* Delicate Architectural Linework in Background with visibility-aware ambient breathing */}
-      <div className="absolute inset-0 flex items-center justify-center pointer-events-none opacity-25 select-none z-0">
+      <motion.div
+        className="absolute inset-0 flex items-center justify-center pointer-events-none opacity-25 select-none z-0 will-change-transform"
+        style={shouldReduceMotion ? undefined : { y: artworkY, scale: artworkScale }}
+      >
         <ArchitecturalArtwork className="w-full max-w-5xl h-auto" isAmbientActive={isAmbientActive} />
-      </div>
+      </motion.div>
 
-      <div className="relative z-10 max-w-4xl mx-auto w-full flex-1 flex flex-col justify-between items-center text-center">
+      {/* Warm vignette that deepens the page edges without hiding the grain */}
+      <div
+        className="absolute inset-0 z-0 pointer-events-none"
+        style={{
+          background:
+            "radial-gradient(120% 90% at 50% 35%, transparent 45%, rgba(32, 6, 11, 0.045) 100%)",
+        }}
+        aria-hidden="true"
+      />
+
+      <motion.div
+        className="relative z-10 max-w-4xl mx-auto w-full flex-1 flex flex-col justify-between items-center text-center"
+        style={shouldReduceMotion ? undefined : { y: contentY, opacity: contentOpacity }}
+      >
         {/* Top Secondary Information */}
         <div
           className="w-full flex flex-col sm:flex-row items-center justify-between text-[11px] tracking-[0.15em] sm:tracking-[0.18em] uppercase font-sans text-[#68626B] pb-4 gap-2 anim-fade-up"
@@ -129,18 +173,24 @@ export default function FullWidthHero({ profile }: FullWidthHeroProps) {
             {/* Filled Burgundy Button */}
             <Link
               href="/#projects"
-              className={`group w-full sm:w-auto inline-flex items-center justify-center gap-2.5 px-6 sm:px-7 py-3 sm:py-3.5 rounded-xl bg-[#590B20] text-white text-sm font-sans font-medium hover:bg-[#430717] hover:-translate-y-0.5 active:translate-y-0 active:scale-98 transition-all duration-200 shadow-sm ${FOCUS_RING}`}
+              ref={primaryCtaRef}
+              onMouseMove={onPrimaryCtaMove}
+              onMouseLeave={onPrimaryCtaLeave}
+              className={`group sheen w-full sm:w-auto inline-flex items-center justify-center gap-2.5 px-6 sm:px-7 py-3 sm:py-3.5 rounded-xl bg-[#590B20] text-white text-sm font-sans font-medium hover:bg-[#430717] hover:shadow-[0_14px_32px_rgba(89,11,32,0.28)] active:scale-98 transition-[background-color,box-shadow] duration-200 shadow-sm ${FOCUS_RING}`}
             >
               <span>View Selected Work</span>
-              <ArrowRight className="w-4 h-4 transition-transform duration-200 group-hover:translate-x-1" />
+              <ArrowRight className="w-4 h-4 transition-transform duration-300 group-hover:translate-x-1.5" />
             </Link>
 
             {/* Outlined Burgundy Button */}
             <button
               onClick={() => openAssistant()}
-              className={`group w-full sm:w-auto inline-flex items-center justify-center gap-2 px-6 sm:px-7 py-3 sm:py-3.5 rounded-xl border border-[#590B20] text-[#590B20] bg-transparent text-sm font-sans font-medium hover:bg-[#590B20]/5 hover:-translate-y-0.5 active:translate-y-0 active:scale-98 transition-all duration-200 cursor-pointer ${FOCUS_RING}`}
+              ref={secondaryCtaRef}
+              onMouseMove={onSecondaryCtaMove}
+              onMouseLeave={onSecondaryCtaLeave}
+              className={`group w-full sm:w-auto inline-flex items-center justify-center gap-2 px-6 sm:px-7 py-3 sm:py-3.5 rounded-xl border border-[#590B20] text-[#590B20] bg-transparent text-sm font-sans font-medium hover:bg-[#590B20]/5 hover:shadow-[0_10px_26px_rgba(89,11,32,0.12)] active:scale-98 transition-[background-color,box-shadow,border-color] duration-200 cursor-pointer ${FOCUS_RING}`}
             >
-              <Sparkles className="w-4 h-4 text-[#AC9062] transition-transform duration-200 group-hover:rotate-12" />
+              <Sparkles className="w-4 h-4 text-[#AC9062] transition-transform duration-300 group-hover:rotate-[18deg] group-hover:scale-110" />
               <span>Ask Varun&apos;s AI</span>
             </button>
           </div>
@@ -152,9 +202,9 @@ export default function FullWidthHero({ profile }: FullWidthHeroProps) {
           >
             <form
               onSubmit={handleQuerySubmit}
-              className={`relative flex items-center bg-white border border-[#D9CCB8] rounded-xl px-4 py-3.5 shadow-[0_4px_20px_rgba(89,11,32,0.04)] hover:border-[#AC9062] focus-within:border-[#590B20] focus-within:ring-2 focus-within:ring-[#590B20]/20 transition-all ${FOCUS_RING}`}
+              className={`relative flex items-center bg-white border border-[#D9CCB8] rounded-xl px-4 py-3.5 shadow-[0_4px_20px_rgba(89,11,32,0.04)] hover:border-[#AC9062] hover:shadow-[0_10px_28px_rgba(89,11,32,0.07)] focus-within:border-[#590B20] focus-within:ring-2 focus-within:ring-[#590B20]/20 focus-within:shadow-[0_12px_32px_rgba(89,11,32,0.1)] focus-within:-translate-y-0.5 transition-all duration-300 ${FOCUS_RING}`}
             >
-              <Sparkles className="w-4 h-4 text-[#AC9062] mr-3 shrink-0" />
+              <Sparkles className="w-4 h-4 text-[#AC9062] mr-3 shrink-0 transition-transform duration-500 group-focus-within:rotate-12" />
               <input
                 type="text"
                 value={query}
@@ -192,13 +242,19 @@ export default function FullWidthHero({ profile }: FullWidthHeroProps) {
         >
           <Link
             href="/#projects"
-            className="group flex flex-col items-center gap-1.5 text-[10px] tracking-[0.2em] uppercase font-sans text-[#68626B] hover:text-[#590B20] transition-colors"
+            className={`group flex flex-col items-center gap-1.5 text-[10px] tracking-[0.2em] uppercase font-sans text-[#68626B] hover:text-[#590B20] transition-colors rounded ${FOCUS_RING}`}
           >
-            <span>Scroll to Projects</span>
-            <span className="w-4 h-[1px] bg-[#AC9062] group-hover:w-8 transition-all duration-300" />
+            <span className="transition-[letter-spacing] duration-500 group-hover:tracking-[0.26em]">
+              Scroll to Projects
+            </span>
+            <span className="w-4 h-[1px] bg-[#AC9062] group-hover:w-10 transition-all duration-500 ease-out" />
+            <ChevronDown
+              className="w-3.5 h-3.5 text-[#AC9062] scroll-cue"
+              aria-hidden="true"
+            />
           </Link>
         </div>
-      </div>
+      </motion.div>
     </section>
   );
 }

@@ -6,6 +6,7 @@ import { getPublishedProjectBySlug, getPublishedProjects } from "@/lib/content-s
 import { ArrowLeft, CheckCircle2, AlertCircle, Layers, ArrowUpRight, ShieldCheck, UserCheck, ExternalLink } from "lucide-react";
 import Monogram from "@/components/ui/Monogram";
 import Footer from "@/components/layout/Footer";
+import { Reveal, RevealHeading } from "@/components/ui/Reveal";
 
 export const dynamic = "force-dynamic";
 export const dynamicParams = true;
@@ -34,7 +35,7 @@ export default async function ProjectCaseStudyPage({
       <header className="w-full border-b border-[#D9CCB8] bg-[#F7F4EE]/90 backdrop-blur-sm sticky top-0 z-30 px-6 lg:px-16 py-4">
         <div className="max-w-[1600px] mx-auto flex items-center justify-between">
           <div className="flex items-center gap-4">
-            <Link href="/" className="hover:opacity-80 transition-opacity">
+            <Link href="/" className="transition-transform duration-500 ease-out hover:scale-105 hover:-rotate-3">
               <Monogram className="w-8 h-9" />
             </Link>
             <div className="text-xs tracking-wider uppercase font-sans font-medium text-[#20060B]">
@@ -60,7 +61,7 @@ export default async function ProjectCaseStudyPage({
       <main className="flex-1 max-w-[1200px] mx-auto w-full py-16 px-6 lg:px-12">
         {/* Project Title Block */}
         <div className="pb-10 border-b border-[#D9CCB8]">
-          <div className="flex items-center gap-2.5 mb-4 text-xs font-sans">
+          <Reveal variant="fade" className="flex items-center gap-2.5 mb-4 text-xs font-sans">
             <span className="px-3 py-1 rounded-full bg-[#590B20]/10 text-[#590B20] font-semibold tracking-wider uppercase">
               {project.category}
             </span>
@@ -68,18 +69,22 @@ export default async function ProjectCaseStudyPage({
             <span className="text-[#68626B] font-medium tracking-wide uppercase">
               Status: {project.status}
             </span>
-          </div>
+          </Reveal>
 
-          <h1 className="font-display text-4xl sm:text-6xl font-normal text-[#20060B] mb-4">
-            {project.title}
-          </h1>
-          <p className="text-lg sm:text-xl text-[#68626B] font-editorial leading-relaxed max-w-3xl mb-6">
-            {project.tagline}
-          </p>
+          <RevealHeading
+            as="h1"
+            text={project.title}
+            className="font-display text-4xl sm:text-6xl font-normal text-[#20060B] mb-4"
+          />
+          <Reveal variant="up" delay={0.08}>
+            <p className="text-lg sm:text-xl text-[#68626B] font-editorial leading-relaxed max-w-3xl mb-6">
+              {project.tagline}
+            </p>
+          </Reveal>
 
           {/* Action Buttons: Live Demo and GitHub Repository */}
           {(project.liveUrl || project.repoUrl) && (
-            <div className="flex flex-wrap items-center gap-3 pt-2 font-sans">
+            <Reveal variant="up" delay={0.16} className="flex flex-wrap items-center gap-3 pt-2 font-sans">
               {project.liveUrl && (
                 <a
                   href={project.liveUrl}
@@ -105,12 +110,12 @@ export default async function ProjectCaseStudyPage({
                   <span>GitHub Repository</span>
                 </a>
               )}
-            </div>
+            </Reveal>
           )}
         </div>
 
         {/* Metadata Strip */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 py-8 border-b border-[#D9CCB8] text-xs font-sans">
+        <Reveal variant="up" className="grid grid-cols-1 sm:grid-cols-3 gap-6 py-8 border-b border-[#D9CCB8] text-xs font-sans">
           <div>
             <span className="text-[10px] uppercase tracking-wider font-semibold text-[#AC9062] block mb-1">
               My Role
@@ -139,17 +144,17 @@ export default async function ProjectCaseStudyPage({
               {project.previewType === "authentic" ? "Deployed Product" : "Interface & Architecture Prototype"}
             </span>
           </div>
-        </div>
+        </Reveal>
 
         {/* Hero Visual / Authentic Media */}
-        <div className="my-12">
+        <Reveal variant="scale" className="my-12">
           {project.authenticPreviewUrl ? (
-            <div className="relative h-[380px] sm:h-[480px] w-full rounded-2xl overflow-hidden border border-[#D9CCB8] shadow-lg">
+            <div className="group relative h-[380px] sm:h-[480px] w-full rounded-2xl overflow-hidden border border-[#D9CCB8] shadow-lg">
               <Image
                 src={project.authenticPreviewUrl}
                 alt={`${project.title} asset`}
                 fill
-                className="object-cover"
+                className="object-cover transition-transform duration-[1200ms] ease-out group-hover:scale-105"
                 priority
               />
               <div className="absolute bottom-4 left-4 bg-[#20060B]/80 text-white text-xs px-3 py-1.5 rounded-lg backdrop-blur-sm">
@@ -158,7 +163,7 @@ export default async function ProjectCaseStudyPage({
             </div>
           ) : (
             <div className="h-64 rounded-2xl border border-[#D9CCB8] bg-white flex flex-col items-center justify-center p-8 text-center shadow-xs">
-              <Layers className="w-12 h-12 text-[#AC9062]/60 mb-3" />
+              <Layers className="w-12 h-12 text-[#AC9062]/60 mb-3 float-slow" />
               <h3 className="font-display text-2xl text-[#20060B] mb-1">
                 {project.title} Interface Concept
               </h3>
@@ -167,12 +172,12 @@ export default async function ProjectCaseStudyPage({
               </p>
             </div>
           )}
-        </div>
+        </Reveal>
 
         {/* Case Study Content Sections */}
         <div className="space-y-12">
           {/* 1. Overview & Problem */}
-          <section className="grid grid-cols-1 md:grid-cols-12 gap-8">
+          <Reveal as="section" variant="up" className="grid grid-cols-1 md:grid-cols-12 gap-8">
             <div className="md:col-span-4">
               <h2 className="font-display text-2xl text-[#20060B] sticky top-24">
                 Overview &amp; Problem
@@ -187,10 +192,10 @@ export default async function ProjectCaseStudyPage({
                 <p className="text-[#68626B] leading-relaxed">{project.problem}</p>
               </div>
             </div>
-          </section>
+          </Reveal>
 
           {/* 2. Intended Users */}
-          <section className="grid grid-cols-1 md:grid-cols-12 gap-8 pt-8 border-t border-[#D9CCB8]/80">
+          <Reveal as="section" variant="up" className="grid grid-cols-1 md:grid-cols-12 gap-8 pt-8 border-t border-[#D9CCB8]/80">
             <div className="md:col-span-4">
               <h2 className="font-display text-2xl text-[#20060B] sticky top-24">
                 Intended Users
@@ -206,10 +211,10 @@ export default async function ProjectCaseStudyPage({
                 ))}
               </ul>
             </div>
-          </section>
+          </Reveal>
 
           {/* 3. Team Context & Individual Contribution */}
-          <section className="grid grid-cols-1 md:grid-cols-12 gap-8 pt-8 border-t border-[#D9CCB8]/80">
+          <Reveal as="section" variant="up" className="grid grid-cols-1 md:grid-cols-12 gap-8 pt-8 border-t border-[#D9CCB8]/80">
             <div className="md:col-span-4">
               <h2 className="font-display text-2xl text-[#20060B] sticky top-24">
                 Team Context &amp; Contribution
@@ -233,10 +238,10 @@ export default async function ProjectCaseStudyPage({
                 </p>
               </div>
             </div>
-          </section>
+          </Reveal>
 
           {/* 4. Features Actually Built */}
-          <section className="grid grid-cols-1 md:grid-cols-12 gap-8 pt-8 border-t border-[#D9CCB8]/80">
+          <Reveal as="section" variant="up" className="grid grid-cols-1 md:grid-cols-12 gap-8 pt-8 border-t border-[#D9CCB8]/80">
             <div className="md:col-span-4">
               <h2 className="font-display text-2xl text-[#20060B] sticky top-24">
                 Features Actually Built
@@ -252,10 +257,10 @@ export default async function ProjectCaseStudyPage({
                 ))}
               </ul>
             </div>
-          </section>
+          </Reveal>
 
           {/* 5. Challenges & Lessons */}
-          <section className="grid grid-cols-1 md:grid-cols-12 gap-8 pt-8 border-t border-[#D9CCB8]/80">
+          <Reveal as="section" variant="up" className="grid grid-cols-1 md:grid-cols-12 gap-8 pt-8 border-t border-[#D9CCB8]/80">
             <div className="md:col-span-4">
               <h2 className="font-display text-2xl text-[#20060B] sticky top-24">
                 Challenges &amp; Lessons
@@ -290,10 +295,10 @@ export default async function ProjectCaseStudyPage({
                 </ul>
               </div>
             </div>
-          </section>
+          </Reveal>
 
           {/* 6. Current Limitations & Status */}
-          <section className="grid grid-cols-1 md:grid-cols-12 gap-8 pt-8 border-t border-[#D9CCB8]/80">
+          <Reveal as="section" variant="up" className="grid grid-cols-1 md:grid-cols-12 gap-8 pt-8 border-t border-[#D9CCB8]/80">
             <div className="md:col-span-4">
               <h2 className="font-display text-2xl text-[#20060B] sticky top-24">
                 Current Status &amp; Limitations
@@ -312,26 +317,26 @@ export default async function ProjectCaseStudyPage({
                 </div>
               </div>
             </div>
-          </section>
+          </Reveal>
         </div>
 
         {/* Back navigation */}
-        <div className="mt-16 pt-8 border-t border-[#D9CCB8] flex items-center justify-between">
+        <Reveal variant="up" className="mt-16 pt-8 border-t border-[#D9CCB8] flex items-center justify-between">
           <Link
             href="/projects"
-            className="inline-flex items-center gap-2 text-sm font-sans font-medium text-[#590B20] hover:text-[#20060B] transition-colors"
+            className="group inline-flex items-center gap-2 text-sm font-sans font-medium text-[#590B20] hover:text-[#20060B] transition-colors"
           >
-            <ArrowLeft className="w-4 h-4" />
-            <span>Back to All Projects</span>
+            <ArrowLeft className="w-4 h-4 transition-transform duration-300 group-hover:-translate-x-1" />
+            <span className="link-sweep">Back to All Projects</span>
           </Link>
           <Link
             href="/#contact"
-            className="inline-flex items-center gap-1.5 text-sm font-sans font-medium text-[#AC9062] hover:text-[#590B20] transition-colors"
+            className="group inline-flex items-center gap-1.5 text-sm font-sans font-medium text-[#AC9062] hover:text-[#590B20] transition-colors"
           >
-            <span>Discuss this project with Varun</span>
-            <ArrowUpRight className="w-4 h-4" />
+            <span className="link-sweep">Discuss this project with Varun</span>
+            <ArrowUpRight className="w-4 h-4 transition-transform duration-300 group-hover:translate-x-1 group-hover:-translate-y-1" />
           </Link>
-        </div>
+        </Reveal>
       </main>
 
       <Footer />

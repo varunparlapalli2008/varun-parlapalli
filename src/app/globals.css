@@ -151,3 +151,222 @@ html[data-portfolio-intro="playing"] #top .anim-rule {
     scroll-behavior: auto !important;
   }
 }
+
+/* ==========================================================================
+   INTERACTION & SCROLL CHOREOGRAPHY LAYER
+   Motion utilities shared across the atelier. Purely presentational — no
+   content or layout semantics are altered here.
+   ========================================================================== */
+
+/* Anchor offset so sticky-header jumps land with breathing room */
+html {
+  scroll-padding-top: calc(var(--header-height) + 2rem);
+}
+
+/* Utility: hide scrollbar on horizontal rails (used by skills filter strip) */
+.scrollbar-none {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.scrollbar-none::-webkit-scrollbar {
+  display: none;
+}
+
+/* --------------------------------------------------------------------------
+   Keyframes
+   -------------------------------------------------------------------------- */
+
+@keyframes floatY {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-6px); }
+}
+
+@keyframes scrollCue {
+  0% { transform: translateY(0); opacity: 0.25; }
+  45% { transform: translateY(7px); opacity: 1; }
+  100% { transform: translateY(14px); opacity: 0; }
+}
+
+@keyframes sheenSweep {
+  0% { transform: translateX(-120%) skewX(-16deg); }
+  100% { transform: translateX(260%) skewX(-16deg); }
+}
+
+@keyframes goldPan {
+  0% { background-position: 0% 50%; }
+  100% { background-position: 200% 50%; }
+}
+
+@keyframes inkDraw {
+  from { transform: scaleX(0); }
+  to { transform: scaleX(1); }
+}
+
+/* --------------------------------------------------------------------------
+   Hover & pointer affordances
+   -------------------------------------------------------------------------- */
+
+/* Cursor-tracked warm spotlight. Pair with the useSpotlight() hook, which
+   writes --spot-x / --spot-y / --spot-opacity onto the element.
+   The glow paints as a z-index:0 pseudo-element, so mark the card's own
+   content wrapper `relative` (no z-index — that would open a new stacking
+   context) to keep text crisp above the wash. */
+.spotlight {
+  position: relative;
+  isolation: isolate;
+}
+.spotlight::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  z-index: 0;
+  opacity: var(--spot-opacity, 0);
+  transition: opacity 0.35s ease;
+  background: radial-gradient(
+    380px circle at var(--spot-x, 50%) var(--spot-y, 50%),
+    rgba(172, 144, 98, 0.14),
+    rgba(172, 144, 98, 0.05) 40%,
+    transparent 68%
+  );
+}
+
+/* Diagonal light sweep across a surface on hover */
+.sheen {
+  position: relative;
+  overflow: hidden;
+}
+.sheen::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 45%;
+  height: 100%;
+  pointer-events: none;
+  opacity: 0;
+  background: linear-gradient(
+    100deg,
+    transparent,
+    rgba(255, 255, 255, 0.55),
+    transparent
+  );
+  transform: translateX(-120%) skewX(-16deg);
+}
+.sheen:hover::after,
+.sheen:focus-visible::after {
+  opacity: 1;
+  animation: sheenSweep 0.9s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+/* Underline that wipes in from the left */
+.link-sweep {
+  position: relative;
+}
+.link-sweep::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  bottom: -2px;
+  height: 1px;
+  width: 100%;
+  background: currentColor;
+  transform: scaleX(0);
+  transform-origin: left center;
+  transition: transform 0.32s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.link-sweep:hover::after,
+.link-sweep:focus-visible::after {
+  transform: scaleX(1);
+}
+
+/* Gentle elevation for cards that are not already motion-driven */
+.lift {
+  transition:
+    transform 0.32s cubic-bezier(0.22, 1, 0.36, 1),
+    box-shadow 0.32s cubic-bezier(0.22, 1, 0.36, 1),
+    border-color 0.32s ease;
+}
+.lift:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 18px 44px rgba(89, 11, 32, 0.1);
+  border-color: #AC9062;
+}
+.lift:active {
+  transform: translateY(-1px) scale(0.995);
+}
+
+/* Antique-gold shimmering text for accent numerals */
+.gold-shimmer {
+  background: linear-gradient(
+    100deg,
+    rgba(172, 144, 98, 0.28) 0%,
+    rgba(197, 168, 128, 0.75) 25%,
+    rgba(172, 144, 98, 0.28) 50%,
+    rgba(197, 168, 128, 0.75) 75%,
+    rgba(172, 144, 98, 0.28) 100%
+  );
+  background-size: 200% auto;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  animation: goldPan 7s linear infinite;
+}
+
+/* Bouncing hint for the hero scroll affordance */
+.scroll-cue {
+  animation: scrollCue 2s cubic-bezier(0.22, 1, 0.36, 1) infinite;
+}
+
+.float-slow {
+  animation: floatY 7s ease-in-out infinite;
+}
+
+/* --------------------------------------------------------------------------
+   Scroll-driven progressive enhancement (no JS, modern browsers only)
+   -------------------------------------------------------------------------- */
+
+@supports (animation-timeline: view()) {
+  /* Gold section rules draw themselves as they enter the viewport */
+  .rule-draw {
+    transform-origin: left center;
+    animation: inkDraw linear both;
+    animation-timeline: view();
+    animation-range: entry 10% cover 28%;
+  }
+}
+
+/* --------------------------------------------------------------------------
+   Reduced-motion: silence every ambient loop and sweep
+   -------------------------------------------------------------------------- */
+
+@media (prefers-reduced-motion: reduce) {
+  .spotlight::before,
+  .sheen::after {
+    display: none !important;
+  }
+
+  .scroll-cue,
+  .float-slow,
+  .gold-shimmer,
+  .rule-draw {
+    animation: none !important;
+  }
+
+  .gold-shimmer {
+    background: none;
+    color: #AC9062;
+  }
+
+  .lift:hover,
+  .lift:active {
+    transform: none;
+  }
+
+  /* Static orientation, not an animation — exempt it from the blanket
+     `transform: none` that the reduced-motion reset applies to everything. */
+  .ring-origin-top {
+    transform: rotate(-90deg) !important;
+  }
+}
