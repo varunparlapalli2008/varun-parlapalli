@@ -109,9 +109,7 @@ export default function TopHeader() {
             <span className="text-[10px] sm:text-[11px] font-sans font-semibold tracking-[0.16em] sm:tracking-[0.2em] text-[#20060B] uppercase leading-tight group-hover:text-[#590B20] transition-colors duration-300">
               Parlapalli Varun
             </span>
-            <span className="text-[8px] sm:text-[9px] font-sans tracking-[0.18em] sm:tracking-[0.24em] text-[#AC9062] uppercase leading-tight mt-0.5 transition-[letter-spacing] duration-500 ease-out group-hover:tracking-[0.22em] sm:group-hover:tracking-[0.28em]">
-              Royal Technology Atelier
-            </span>
+            
           </div>
         </Link>
 
