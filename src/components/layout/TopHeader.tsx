@@ -106,7 +106,7 @@ export default function TopHeader() {
         >
           <Monogram className="w-8 h-9 sm:w-9 sm:h-10 transition-transform duration-500 ease-out group-hover:scale-105 group-hover:-rotate-3 shrink-0" />
           <div className="flex flex-col">
-            <span className="text-[10px] sm:text-[11px] font-sans font-semibold tracking-[0.16em] sm:tracking-[0.2em] text-[#20060B] uppercase leading-tight group-hover:text-[#590B20] transition-colors duration-300">
+            <span className="text-[15px] sm:text-[11px] font-sans font-semibold tracking-[0.16em] sm:tracking-[0.2em] text-[#20060B] uppercase leading-tight group-hover:text-[#590B20] transition-colors duration-300">
               Parlapalli Varun
             </span>
             
